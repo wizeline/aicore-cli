@@ -63,18 +63,13 @@ function generateAvailableAgentsTable(): string {
 
 function generateSkillDiscoveryPaths(): string {
   const standardPaths = [
-    '- Root directory (if it contains `SKILL.md`)',
-    '- `skills/`',
-    '- `skills/.curated/`',
-    '- `skills/.experimental/`',
-    '- `skills/.system/`',
+    '- Root directory (looks for `SKILL.md`)',
+    '- `skills/` subdirectory and sub-folders (like `.curated/`, `.experimental/`)',
+    '- Agent-specific directories (e.g., `.agents/skills/`, `.claude/skills/`, etc.)',
+    '- Plugin manifest files (`marketplace.json`, `plugin.json`)',
   ];
 
-  const agentPaths = [...new Set(Object.values(agents).map((a) => a.skillsDir))].map(
-    (p) => `- \`.${p.startsWith('.') ? p.slice(1) : '/' + p}/\``
-  );
-
-  return [...standardPaths, ...agentPaths].join('\n');
+  return standardPaths.join('\n');
 }
 
 function generateKeywords(): string[] {

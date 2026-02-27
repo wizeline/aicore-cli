@@ -9,8 +9,8 @@
  * ~/.config (or $XDG_CONFIG_HOME if set), regardless of platform.
  * The skills CLI must match this behavior to install skills in the correct location.
  *
- * See: https://github.com/vercel-labs/skills/pull/66
- * See: https://github.com/vercel-labs/skills/issues/63
+ * See: https://github.com/wizeline/skills/pull/66
+ * See: https://github.com/wizeline/skills/issues/63
  */
 
 import { describe, it, expect } from 'vitest';

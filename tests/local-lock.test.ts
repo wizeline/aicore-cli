@@ -42,7 +42,7 @@ describe('local-lock', () => {
           version: 1,
           skills: {
             'my-skill': {
-              source: 'vercel-labs/skills',
+              source: 'wizeline/skills',
               sourceType: 'github',
               computedHash: 'abc123',
             },
@@ -53,7 +53,7 @@ describe('local-lock', () => {
         const lock = await readLocalLock(dir);
         expect(lock.version).toBe(1);
         expect(lock.skills['my-skill']).toEqual({
-          source: 'vercel-labs/skills',
+          source: 'wizeline/skills',
           sourceType: 'github',
           computedHash: 'abc123',
         });

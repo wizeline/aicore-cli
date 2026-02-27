@@ -5,7 +5,7 @@ description: Helps users discover and install agent skills when they ask questio
 
 # Find Skills
 
-This skill helps you discover and install skills from the open agent skills ecosystem.
+This skill helps you discover and install skills from The open agent skills & subagents ecosystem.
 
 ## When to Use This Skill
 
@@ -20,7 +20,7 @@ Use this skill when the user:
 
 ## What is the Skills CLI?
 
-The Skills CLI (`npx skills`) is the package manager for the open agent skills ecosystem. Skills are modular packages that extend agent capabilities with specialized knowledge, workflows, and tools.
+The Skills CLI (`npx skills`) is the package manager for The open agent skills & subagents ecosystem. Skills are modular packages that extend agent capabilities with specialized knowledge, workflows, and tools.
 
 **Key commands:**
 
@@ -29,7 +29,7 @@ The Skills CLI (`npx skills`) is the package manager for the open agent skills e
 - `npx skills check` - Check for skill updates
 - `npx skills update` - Update all installed skills
 
-**Browse skills at:** https://skills.sh/
+**Browse skills at:** <https://skills.sh/>
 
 ## How to Help Users Find Skills
 
@@ -60,8 +60,8 @@ The command will return results like:
 ```
 Install with npx skills add <owner/repo@skill>
 
-vercel-labs/agent-skills@vercel-react-best-practices
-└ https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices
+wizeline/agent-skills@vercel-react-best-practices
+└ https://skills.sh/wizeline/agent-skills/vercel-react-best-practices
 ```
 
 ### Step 3: Present Options to the User
@@ -79,9 +79,9 @@ I found a skill that might help! The "vercel-react-best-practices" skill provide
 React and Next.js performance optimization guidelines from Vercel Engineering.
 
 To install it:
-npx skills add vercel-labs/agent-skills@vercel-react-best-practices
+npx skills add wizeline/agent-skills@vercel-react-best-practices
 
-Learn more: https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices
+Learn more: https://skills.sh/wizeline/agent-skills/vercel-react-best-practices
 ```
 
 ### Step 4: Offer to Install
@@ -112,7 +112,7 @@ When searching, consider these common categories:
 
 1. **Use specific keywords**: "react testing" is better than just "testing"
 2. **Try alternative terms**: If "deploy" doesn't work, try "deployment" or "ci-cd"
-3. **Check popular sources**: Many skills come from `vercel-labs/agent-skills` or `ComposioHQ/awesome-claude-skills`
+3. **Check popular sources**: Many skills come from `wizeline/agent-skills` or `ComposioHQ/awesome-claude-skills`
 
 ## When No Skills Are Found
 
