@@ -155,7 +155,7 @@ export function getGitHubToken(): string | null {
  * This makes ONE API call to get the entire repo tree, then extracts the SHA
  * for the specific skill folder.
  *
- * @param ownerRepo - GitHub owner/repo (e.g., "vercel-labs/agent-skills")
+ * @param ownerRepo - GitHub owner/repo (e.g., "wizeline/agent-skills")
  * @param skillPath - Path to skill folder or SKILL.md (e.g., "skills/react-best-practices/SKILL.md")
  * @param token - Optional GitHub token for authenticated requests (higher rate limits)
  * @returns The tree SHA for the skill folder, or null if not found

@@ -72,6 +72,20 @@ export function getCanonicalSkillsDir(global: boolean, cwd?: string): string {
 }
 
 /**
+ * Adapts an agent's skills directory path to use the current SKILLS_SUBDIR.
+ * When the agents CLI is active (IS_AGENTS_CLI=1), SKILLS_SUBDIR is 'agents',
+ * so agent-specific paths like '.claude/skills' become '.claude/agents'.
+ * For the skills CLI, SKILLS_SUBDIR is 'skills' and nothing changes.
+ *
+ * Works on both relative paths ('.claude/skills') and absolute paths
+ * ('/home/user/.claude/skills') by replacing only the trailing 'skills' component.
+ */
+export function adaptSubdir(dir: string): string {
+  if (SKILLS_SUBDIR === 'skills') return dir;
+  return dir.replace(/(\/|\\|^)skills$/, `$1${SKILLS_SUBDIR}`);
+}
+
+/**
  * Gets the base directory for an agent's skills, respecting universal agents.
  * Universal agents always use the canonical directory, which prevents
  * redundant symlinks and double-listing of skills.
@@ -87,12 +101,12 @@ export function getAgentBaseDir(agentType: AgentType, global: boolean, cwd?: str
   if (global) {
     if (agent.globalSkillsDir === undefined) {
       // This should be caught by callers checking support
-      return join(baseDir, agent.skillsDir);
+      return join(baseDir, adaptSubdir(agent.skillsDir));
     }
-    return agent.globalSkillsDir;
+    return adaptSubdir(agent.globalSkillsDir);
   }
 
-  return join(baseDir, agent.skillsDir);
+  return join(baseDir, adaptSubdir(agent.skillsDir));
 }
 
 function resolveSymlinkTarget(linkPath: string, linkTarget: string): string {
@@ -201,7 +215,14 @@ async function createSymlink(target: string, linkPath: string): Promise<boolean>
     const relativePath = relative(realLinkDir, target);
     const symlinkType = platform() === 'win32' ? 'junction' : undefined;
 
-    await symlink(relativePath, linkPath, symlinkType);
+    // On Windows, junctions require absolute paths. Node.js internally calls
+    // path.resolve() on the target using process.cwd() as the base, NOT the
+    // link's parent directory — so passing a relative path produces a wrong
+    // absolute path (e.g. C:\.agents\agents\... instead of C:\project\.agents\agents\...).
+    // Since `target` (canonicalDir) is always absolute, use it directly for junctions.
+    const symlinkTarget = symlinkType === 'junction' ? resolve(target) : relativePath;
+
+    await symlink(symlinkTarget, linkPath, symlinkType);
     return true;
   } catch {
     return false;
@@ -374,8 +395,8 @@ export async function isSkillInstalled(
   }
 
   const targetBase = options.global
-    ? agent.globalSkillsDir!
-    : join(options.cwd || process.cwd(), agent.skillsDir);
+    ? adaptSubdir(agent.globalSkillsDir!)
+    : join(options.cwd || process.cwd(), adaptSubdir(agent.skillsDir));
 
   const skillDir = join(targetBase, sanitized);
 
@@ -463,7 +484,9 @@ export async function installMintlifySkillForAgent(
   const canonicalDir = join(canonicalBase, skillName);
 
   // Agent-specific location (for symlink)
-  const agentBase = isGlobal ? agent.globalSkillsDir! : join(cwd, agent.skillsDir);
+  const agentBase = isGlobal
+    ? adaptSubdir(agent.globalSkillsDir!)
+    : join(cwd, adaptSubdir(agent.skillsDir));
   const agentDir = join(agentBase, skillName);
 
   // Validate paths
@@ -872,7 +895,9 @@ export async function listInstalledSkills(
       if (isGlobal && agent.globalSkillsDir === undefined) {
         continue;
       }
-      const agentDir = isGlobal ? agent.globalSkillsDir! : join(cwd, agent.skillsDir);
+      const agentDir = isGlobal
+        ? adaptSubdir(agent.globalSkillsDir!)
+        : join(cwd, adaptSubdir(agent.skillsDir));
       // Avoid duplicate paths
       if (!scopes.some((s) => s.path === agentDir && s.global === isGlobal)) {
         scopes.push({ global: isGlobal, path: agentDir, agentType });
@@ -940,7 +965,9 @@ export async function listInstalledSkills(
             continue;
           }
 
-          const agentBase = scope.global ? agent.globalSkillsDir! : join(cwd, agent.skillsDir);
+          const agentBase = scope.global
+            ? adaptSubdir(agent.globalSkillsDir!)
+            : join(cwd, adaptSubdir(agent.skillsDir));
           let found = false;
 
           // Try exact directory name matches

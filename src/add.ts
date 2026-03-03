@@ -2,12 +2,19 @@ import * as p from '@clack/prompts';
 import pc from 'picocolors';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
-import { sep } from 'path';
+import { sep, join, basename } from 'path';
 import { parseSource, getOwnerRepo, parseOwnerRepo, isRepoPrivate } from './source-parser.ts';
 import { searchMultiselect, cancelSymbol } from './prompts/search-multiselect.ts';
 
 // Helper to check if a value is a cancel symbol (works with both clack and our custom prompts)
 const isCancelled = (value: unknown): value is symbol => typeof value === 'symbol';
+
+// Terminology constants: "skill/skills" vs "agent/agents" depending on which CLI is used
+const SKILL = process.env.IS_AGENTS_CLI === '1' ? 'agent' : 'skill';
+const SKILLS = process.env.IS_AGENTS_CLI === '1' ? 'agents' : 'skills';
+const SkillCap = process.env.IS_AGENTS_CLI === '1' ? 'Agent' : 'Skill';
+const SkillsCap = process.env.IS_AGENTS_CLI === '1' ? 'Agents' : 'Skills';
+const binaryCLI = process.env.IS_AGENTS_CLI === '1' ? 'agents' : 'skills';
 
 /**
  * Check if a source identifier (owner/repo format) represents a private GitHub repo.
@@ -58,6 +65,7 @@ import {
   saveSelectedAgents,
 } from './skill-lock.ts';
 import { addSkillToLocalLock, computeSkillFolderHash } from './local-lock.ts';
+import { UNIVERSAL_SKILLS_DIR } from './constants.ts';
 import type { Skill, AgentType, RemoteSkill } from './types.ts';
 import packageJson from '../package.json' with { type: 'json' };
 export function initTelemetry(version: string): void {
@@ -360,7 +368,7 @@ async function selectAgentsInteractive(options: {
 
   // Universal agents shown as locked section
   const universalSection = {
-    title: 'Universal (.agents/skills)',
+    title: `Universal (${UNIVERSAL_SKILLS_DIR})`,
     items: universalAgents.map((a) => ({
       value: a,
       label: agents[a].displayName,
@@ -440,13 +448,13 @@ async function handleRemoteSkill(
     return;
   }
 
-  spinner.start(`Fetching skill.md from ${provider.displayName}...`);
+  spinner.start(`Fetching ${SKILL}.md from ${provider.displayName}...`);
   const providerSkill = await provider.fetchSkill(url);
 
   if (!providerSkill) {
-    spinner.stop(pc.red('Invalid skill'));
+    spinner.stop(pc.red(`Invalid ${SKILL}`));
     p.outro(
-      pc.red('Could not fetch skill.md or missing required frontmatter (name, description).')
+      pc.red(`Could not fetch ${SKILL}.md or missing required frontmatter (name, description).`)
     );
     process.exit(1);
   }
@@ -463,15 +471,15 @@ async function handleRemoteSkill(
     metadata: providerSkill.metadata,
   };
 
-  spinner.stop(`Found skill: ${pc.cyan(remoteSkill.installName)}`);
+  spinner.stop(`Found ${SKILL}: ${pc.cyan(remoteSkill.installName)}`);
 
-  p.log.info(`Skill: ${pc.cyan(remoteSkill.name)}`);
+  p.log.info(`${SkillCap}: ${pc.cyan(remoteSkill.name)}`);
   p.log.message(pc.dim(remoteSkill.description));
   p.log.message(pc.dim(`Source: ${remoteSkill.sourceIdentifier}`));
 
   if (options.list) {
     console.log();
-    p.log.step(pc.bold('Skill Details'));
+    p.log.step(pc.bold(`${SkillCap} Details`));
     p.log.message(`  ${pc.cyan('Name:')} ${remoteSkill.name}`);
     p.log.message(`  ${pc.cyan('Install as:')} ${remoteSkill.installName}`);
     p.log.message(`  ${pc.cyan('Provider:')} ${provider.displayName}`);
@@ -644,7 +652,7 @@ async function handleRemoteSkill(
     }
   }
 
-  spinner.start('Installing skill...');
+  spinner.start(`Installing ${SKILL}...`);
 
   const results: {
     skill: string;
@@ -753,7 +761,7 @@ async function handleRemoteSkill(
       resultLines.push(...buildResultLines(successful, targetAgents));
     }
 
-    const title = pc.green('Installed 1 skill');
+    const title = pc.green(`Installed 1 ${SKILL}`);
     p.note(resultLines.join('\n'), title);
 
     // Show symlink failure warning
@@ -779,7 +787,8 @@ async function handleRemoteSkill(
 
   console.log();
   p.outro(
-    pc.green('Done!') + pc.dim('  Review skills before use; they run with full agent permissions.')
+    pc.green('Done!') +
+      pc.dim(`  Review ${SKILLS} before use; they run with full agent permissions.`)
   );
 
   // Prompt for find-skills after successful install
@@ -796,26 +805,26 @@ async function handleWellKnownSkills(
   options: AddOptions,
   spinner: ReturnType<typeof p.spinner>
 ): Promise<void> {
-  spinner.start('Discovering skills from well-known endpoint...');
+  spinner.start(`Discovering ${SKILLS} from well-known endpoint...`);
 
   // Fetch all skills from the well-known endpoint
   const skills = await wellKnownProvider.fetchAllSkills(url);
 
   if (skills.length === 0) {
-    spinner.stop(pc.red('No skills found'));
+    spinner.stop(pc.red(`No ${SKILLS} found`));
     p.outro(
       pc.red(
-        'No skills found at this URL. Make sure the server has a /.well-known/skills/index.json file.'
+        `No ${SKILLS} found at this URL. Make sure the server has a /.well-known/skills/index.json file.`
       )
     );
     process.exit(1);
   }
 
-  spinner.stop(`Found ${pc.green(skills.length)} skill${skills.length > 1 ? 's' : ''}`);
+  spinner.stop(`Found ${pc.green(skills.length)} ${skills.length > 1 ? SKILLS : SKILL}`);
 
   // Log discovered skills
   for (const skill of skills) {
-    p.log.info(`Skill: ${pc.cyan(skill.installName)}`);
+    p.log.info(`${SkillCap}: ${pc.cyan(skill.installName)}`);
     p.log.message(pc.dim(skill.description));
     if (skill.files.size > 1) {
       p.log.message(pc.dim(`  Files: ${Array.from(skill.files.keys()).join(', ')}`));
@@ -824,7 +833,7 @@ async function handleWellKnownSkills(
 
   if (options.list) {
     console.log();
-    p.log.step(pc.bold('Available Skills'));
+    p.log.step(pc.bold(`Available ${SkillsCap}`));
     for (const skill of skills) {
       p.log.message(`  ${pc.cyan(skill.installName)}`);
       p.log.message(`    ${pc.dim(skill.description)}`);
@@ -843,7 +852,7 @@ async function handleWellKnownSkills(
   if (options.skill?.includes('*')) {
     // --skill '*' selects all skills
     selectedSkills = skills;
-    p.log.info(`Installing all ${skills.length} skills`);
+    p.log.info(`Installing all ${skills.length} ${SKILLS}`);
   } else if (options.skill && options.skill.length > 0) {
     selectedSkills = skills.filter((s) =>
       options.skill!.some(
@@ -854,8 +863,8 @@ async function handleWellKnownSkills(
     );
 
     if (selectedSkills.length === 0) {
-      p.log.error(`No matching skills found for: ${options.skill.join(', ')}`);
-      p.log.info('Available skills:');
+      p.log.error(`No matching ${SKILLS} found for: ${options.skill.join(', ')}`);
+      p.log.info(`Available ${SKILLS}:`);
       for (const s of skills) {
         p.log.message(`  - ${s.installName}`);
       }
@@ -864,10 +873,10 @@ async function handleWellKnownSkills(
   } else if (skills.length === 1) {
     selectedSkills = skills;
     const firstSkill = skills[0]!;
-    p.log.info(`Skill: ${pc.cyan(firstSkill.installName)}`);
+    p.log.info(`${SkillCap}: ${pc.cyan(firstSkill.installName)}`);
   } else if (options.yes) {
     selectedSkills = skills;
-    p.log.info(`Installing all ${skills.length} skills`);
+    p.log.info(`Installing all ${skills.length} ${SKILLS}`);
   } else {
     // Prompt user to select skills
     const skillChoices = skills.map((s) => ({
@@ -877,7 +886,7 @@ async function handleWellKnownSkills(
     }));
 
     const selected = await multiselect({
-      message: 'Select skills to install',
+      message: `Select ${SKILLS} to install`,
       options: skillChoices,
       required: true,
     });
@@ -919,7 +928,7 @@ async function handleWellKnownSkills(
         targetAgents = validAgents as AgentType[];
         p.log.info('Installing to all agents');
       } else {
-        p.log.info('Select agents to install skills to');
+        p.log.info(`Select agents to install ${SKILLS} to`);
 
         const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
           value: key as AgentType,
@@ -1073,7 +1082,7 @@ async function handleWellKnownSkills(
     }
   }
 
-  spinner.start('Installing skills...');
+  spinner.start(`Installing ${SKILLS}...`);
 
   const results: {
     skill: string;
@@ -1211,7 +1220,7 @@ async function handleWellKnownSkills(
       }
     }
 
-    const title = pc.green(`Installed ${skillCount} skill${skillCount !== 1 ? 's' : ''}`);
+    const title = pc.green(`Installed ${skillCount} ${skillCount !== 1 ? SKILLS : SKILL}`);
     p.note(resultLines.join('\n'), title);
 
     // Show symlink failure warning (only for symlink mode)
@@ -1235,7 +1244,8 @@ async function handleWellKnownSkills(
 
   console.log();
   p.outro(
-    pc.green('Done!') + pc.dim('  Review skills before use; they run with full agent permissions.')
+    pc.green('Done!') +
+      pc.dim(`  Review ${SKILLS} before use; they run with full agent permissions.`)
   );
 
   // Prompt for find-skills after successful install
@@ -1252,14 +1262,14 @@ async function handleDirectUrlSkillLegacy(
   options: AddOptions,
   spinner: ReturnType<typeof p.spinner>
 ): Promise<void> {
-  spinner.start('Fetching skill.md...');
+  spinner.start(`Fetching ${SKILL}.md...`);
   const mintlifySkill = await fetchMintlifySkill(url);
 
   if (!mintlifySkill) {
-    spinner.stop(pc.red('Invalid skill'));
+    spinner.stop(pc.red(`Invalid ${SKILL}`));
     p.outro(
       pc.red(
-        'Could not fetch skill.md or missing required frontmatter (name, description, mintlify-proj).'
+        `Could not fetch ${SKILL}.md or missing required frontmatter (name, description, mintlify-proj).`
       )
     );
     process.exit(1);
@@ -1276,14 +1286,14 @@ async function handleDirectUrlSkillLegacy(
     sourceIdentifier: 'mintlify/com',
   };
 
-  spinner.stop(`Found skill: ${pc.cyan(remoteSkill.installName)}`);
+  spinner.stop(`Found ${SKILL}: ${pc.cyan(remoteSkill.installName)}`);
 
-  p.log.info(`Skill: ${pc.cyan(remoteSkill.name)}`);
+  p.log.info(`${SkillCap}: ${pc.cyan(remoteSkill.name)}`);
   p.log.message(pc.dim(remoteSkill.description));
 
   if (options.list) {
     console.log();
-    p.log.step(pc.bold('Skill Details'));
+    p.log.step(pc.bold(`${SkillCap} Details`));
     p.log.message(`  ${pc.cyan('Name:')} ${remoteSkill.name}`);
     p.log.message(`  ${pc.cyan('Site:')} ${remoteSkill.installName}`);
     p.log.message(`  ${pc.cyan('Description:')} ${remoteSkill.description}`);
@@ -1321,7 +1331,7 @@ async function handleDirectUrlSkillLegacy(
         targetAgents = validAgents as AgentType[];
         p.log.info('Installing to all agents');
       } else {
-        p.log.info('Select agents to install skills to');
+        p.log.info(`Select agents to install ${SKILLS} to`);
 
         const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
           value: key as AgentType,
@@ -1441,7 +1451,7 @@ async function handleDirectUrlSkillLegacy(
     }
   }
 
-  spinner.start('Installing skill...');
+  spinner.start(`Installing ${SKILL}...`);
 
   const results: {
     skill: string;
@@ -1512,7 +1522,7 @@ async function handleDirectUrlSkillLegacy(
     }
     resultLines.push(...buildResultLines(successful, targetAgents));
 
-    const title = pc.green('Installed 1 skill');
+    const title = pc.green(`Installed 1 ${SKILL}`);
     p.note(resultLines.join('\n'), title);
 
     // Show symlink failure warning
@@ -1538,7 +1548,8 @@ async function handleDirectUrlSkillLegacy(
 
   console.log();
   p.outro(
-    pc.green('Done!') + pc.dim('  Review skills before use; they run with full agent permissions.')
+    pc.green('Done!') +
+      pc.dim(`  Review ${SKILLS} before use; they run with full agent permissions.`)
   );
 
   // Prompt for find-skills after successful install
@@ -1564,10 +1575,12 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
     );
     console.log();
     console.log(pc.dim('  Usage:'));
-    console.log(`    ${pc.cyan('npx skills add')} ${pc.yellow('<source>')} ${pc.dim('[options]')}`);
+    console.log(
+      `    ${pc.cyan(`npx ${binaryCLI} add`)} ${pc.yellow('<source>')} ${pc.dim('[options]')}`
+    );
     console.log();
     console.log(pc.dim('  Example:'));
-    console.log(`    ${pc.cyan('npx skills add')} ${pc.yellow('vercel-labs/agent-skills')}`);
+    console.log(`    ${pc.cyan(`npx ${binaryCLI} add`)} ${pc.yellow('wizeline/agent-skills')}`);
     console.log();
     process.exit(1);
   }
@@ -1580,7 +1593,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
   }
 
   console.log();
-  p.intro(pc.bgCyan(pc.black(' skills ')));
+  p.intro(pc.bgCyan(pc.black(` ${SKILLS} `)));
 
   if (!process.stdin.isTTY) {
     showInstallTip();
@@ -1638,30 +1651,75 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       }
     }
 
-    // Include internal skills when a specific skill is explicitly requested
-    // (via --skill or @skill syntax)
-    const includeInternal = !!(options.skill && options.skill.length > 0);
+    // For the agents CLI with a specific subpath, skip SKILL.md discovery entirely —
+    // agents don't require SKILL.md. Install the directory at the given subpath directly.
+    const skills: Skill[] = [];
+    if (process.env.IS_AGENTS_CLI === '1' && parsed.subpath) {
+      const agentPath = join(skillsDir, parsed.subpath);
 
-    spinner.start('Discovering skills...');
-    const skills = await discoverSkills(skillsDir, parsed.subpath, {
-      includeInternal,
-      fullDepth: options.fullDepth,
-    });
+      if (!existsSync(agentPath)) {
+        spinner.stop(pc.red(`Agent path not found`));
+        p.outro(
+          pc.red(
+            `Path not found in repository: ${parsed.subpath}\n` +
+              `  Make sure the path exists in the repository and try again.`
+          )
+        );
+        await cleanup(tempDir);
+        process.exit(1);
+      }
 
-    if (skills.length === 0) {
-      spinner.stop(pc.red('No skills found'));
-      p.outro(
-        pc.red('No valid skills found. Skills require a SKILL.md with name and description.')
-      );
-      await cleanup(tempDir);
-      process.exit(1);
+      // Derive the name directly from the resolved path — the most reliable source
+      const agentName = basename(agentPath);
+      skills.push({
+        name: agentName,
+        description: '',
+        path: agentPath,
+        rawContent: '',
+      });
+      spinner.stop(`Found ${pc.green(1)} ${SKILL}`);
+    } else {
+      // Include internal skills when a specific skill is explicitly requested
+      // (via --skill or @skill syntax)
+      const includeInternal = !!(options.skill && options.skill.length > 0);
+
+      spinner.start(`Discovering ${SKILLS}...`);
+      const discovered = await discoverSkills(skillsDir, parsed.subpath, {
+        includeInternal,
+        fullDepth: options.fullDepth,
+      });
+      skills.push(...discovered);
+
+      if (skills.length === 0) {
+        if (process.env.IS_AGENTS_CLI === '1') {
+          // No subpath given and no SKILL.md found — install the whole repo as an agent.
+          // Derive name from the git URL (e.g. https://github.com/owner/repo.git → repo)
+          // which is more reliable than parsing the raw source string.
+          const agentName = basename(parsed.url).replace(/\.git$/, '') || basename(skillsDir);
+          skills.push({
+            name: agentName,
+            description: '',
+            path: skillsDir,
+            rawContent: '',
+          });
+        } else {
+          spinner.stop(pc.red(`No ${SKILLS} found`));
+          p.outro(
+            pc.red(
+              `No valid ${SKILLS} found. The repository must contain SKILL.md files with a name and description in the frontmatter.`
+            )
+          );
+          await cleanup(tempDir);
+          process.exit(1);
+        }
+      }
+
+      spinner.stop(`Found ${pc.green(skills.length)} ${skills.length > 1 ? SKILLS : SKILL}`);
     }
-
-    spinner.stop(`Found ${pc.green(skills.length)} skill${skills.length > 1 ? 's' : ''}`);
 
     if (options.list) {
       console.log();
-      p.log.step(pc.bold('Available Skills'));
+      p.log.step(pc.bold(`Available ${SkillsCap}`));
 
       // Group available skills by plugin for list output
       const groupedSkills: Record<string, Skill[]> = {};
@@ -1704,7 +1762,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       }
 
       console.log();
-      p.outro('Use --skill <name> to install specific skills');
+      p.outro(`Use --skill <name> to install specific ${SKILLS}`);
       await cleanup(tempDir);
       process.exit(0);
     }
@@ -1714,13 +1772,13 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
     if (options.skill?.includes('*')) {
       // --skill '*' selects all skills
       selectedSkills = skills;
-      p.log.info(`Installing all ${skills.length} skills`);
+      p.log.info(`Installing all ${skills.length} ${SKILLS}`);
     } else if (options.skill && options.skill.length > 0) {
       selectedSkills = filterSkills(skills, options.skill);
 
       if (selectedSkills.length === 0) {
-        p.log.error(`No matching skills found for: ${options.skill.join(', ')}`);
-        p.log.info('Available skills:');
+        p.log.error(`No matching ${SKILLS} found for: ${options.skill.join(', ')}`);
+        p.log.info(`Available ${SKILLS}:`);
         for (const s of skills) {
           p.log.message(`  - ${getSkillDisplayName(s)}`);
         }
@@ -1729,16 +1787,16 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       }
 
       p.log.info(
-        `Selected ${selectedSkills.length} skill${selectedSkills.length !== 1 ? 's' : ''}: ${selectedSkills.map((s) => pc.cyan(getSkillDisplayName(s))).join(', ')}`
+        `Selected ${selectedSkills.length} ${selectedSkills.length !== 1 ? SKILLS : SKILL}: ${selectedSkills.map((s) => pc.cyan(getSkillDisplayName(s))).join(', ')}`
       );
     } else if (skills.length === 1) {
       selectedSkills = skills;
       const firstSkill = skills[0]!;
-      p.log.info(`Skill: ${pc.cyan(getSkillDisplayName(firstSkill))}`);
+      p.log.info(`${SkillCap}: ${pc.cyan(getSkillDisplayName(firstSkill))}`);
       p.log.message(pc.dim(firstSkill.description));
     } else if (options.yes) {
       selectedSkills = skills;
-      p.log.info(`Installing all ${skills.length} skills`);
+      p.log.info(`Installing all ${skills.length} ${SKILLS}`);
     } else {
       // Sort skills by plugin name first, then by skill name
       const sortedSkills = [...skills].sort((a, b) => {
@@ -1775,7 +1833,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         }
 
         selected = await p.groupMultiselect({
-          message: `Select skills to install ${pc.dim('(space to toggle)')}`,
+          message: `Select ${SKILLS} to install ${pc.dim('(space to toggle)')}`,
           options: grouped,
           required: true,
         });
@@ -1787,7 +1845,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         }));
 
         selected = await multiselect({
-          message: 'Select skills to install',
+          message: `Select ${SKILLS} to install`,
           options: skillChoices,
           required: true,
         });
@@ -1841,7 +1899,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
           targetAgents = validAgents as AgentType[];
           p.log.info('Installing to all agents');
         } else {
-          p.log.info('Select agents to install skills to');
+          p.log.info(`Select agents to install ${SKILLS} to`);
 
           const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
             value: key as AgentType,
@@ -2057,7 +2115,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       }
     }
 
-    spinner.start('Installing skills...');
+    spinner.start(`Installing ${SKILLS}...`);
 
     const results: {
       skill: string;
@@ -2281,7 +2339,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         printSkillResults(ungroupedResults);
       }
 
-      const title = pc.green(`Installed ${skillCount} skill${skillCount !== 1 ? 's' : ''}`);
+      const title = pc.green(`Installed ${skillCount} ${skillCount !== 1 ? SKILLS : SKILL}`);
       p.note(resultLines.join('\n'), title);
 
       // Show symlink failure warning (only for symlink mode)
@@ -2306,7 +2364,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
     console.log();
     p.outro(
       pc.green('Done!') +
-        pc.dim('  Review skills before use; they run with full agent permissions.')
+        pc.dim(`  Review ${SKILLS} before use; they run with full agent permissions.`)
     );
 
     // Prompt for find-skills after successful install
@@ -2389,11 +2447,11 @@ async function promptForFindSkills(
       }
 
       console.log();
-      p.log.step('Installing find-skills skill...');
+      p.log.step('Installing find-skills...');
 
       try {
         // Call runAdd directly
-        await runAdd(['vercel-labs/skills'], {
+        await runAdd(['wizeline/skills'], {
           skill: ['find-skills'],
           global: true,
           yes: true,
@@ -2401,13 +2459,13 @@ async function promptForFindSkills(
         });
       } catch {
         p.log.warn('Failed to install find-skills. You can try again with:');
-        p.log.message(pc.dim('  npx skills add vercel-labs/skills@find-skills -g -y --all'));
+        p.log.message(pc.dim(`  npx ${binaryCLI} add wizeline/skills@find-skills -g -y --all`));
       }
     } else {
       // User declined - dismiss the prompt
       await dismissPrompt('findSkillsPrompt');
       p.log.message(
-        pc.dim('You can install it later with: npx skills add vercel-labs/skills@find-skills')
+        pc.dim(`You can install it later with: npx ${binaryCLI} add wizeline/skills@find-skills`)
       );
     }
   } catch {

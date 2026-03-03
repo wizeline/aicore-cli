@@ -1,11 +1,12 @@
 {
-  "name": "skills",
+  "name": "agents-skills",
   "version": "1.4.2",
-  "description": "The open agent skills ecosystem",
+  "description": "The open agent skills & subagents ecosystem",
   "type": "module",
   "bin": {
-    "skills": "./bin/cli.mjs",
-    "add-skill": "./bin/cli.mjs"
+    "skills": "bin/cli.mjs",
+    "agents": "bin/agents.mjs",
+    "add-skill": "bin/cli.mjs"
   },
   "files": [
     "dist",
@@ -14,7 +15,7 @@
     "ThirdPartyNoticeText.txt"
   ],
   "scripts": {
-    "build": "node scripts/generate-licenses.ts && obuild",
+    "build": "node scripts/generate-licenses.ts && esbuild src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.mjs --external:@clack/prompts --external:gray-matter --external:picocolors --external:simple-git --external:xdg-basedir",
     "generate-licenses": "node scripts/generate-licenses.ts",
     "dev": "node src/cli.ts",
     "exec:test": "node scripts/execute-tests.ts",
@@ -80,11 +81,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vercel-labs/skills.git"
+    "url": "git+https://github.com/wizeline/agents-skills.git"
   },
-  "homepage": "https://github.com/vercel-labs/skills#readme",
+  "homepage": "https://github.com/wizeline/agents-skills#readme",
   "bugs": {
-    "url": "https://github.com/vercel-labs/skills/issues"
+    "url": "https://github.com/wizeline/agents-skills/issues"
   },
   "author": "",
   "license": "MIT",

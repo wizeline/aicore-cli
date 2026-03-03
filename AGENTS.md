@@ -1,10 +1,10 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents working on the `skills` CLI codebase.
+This file provides guidance to AI coding agents working on the `agents-skills` CLI codebase.
 
 ## Project Overview
 
-`skills` is the CLI for the open agent skills ecosystem.
+`agents-skills` is the CLI for the open agent ecosystem. It provides two identical command-line interfaces: `skills` and `agents`. **These commands are aliases and can be used interchangeably.**
 
 ## Commands
 
@@ -69,12 +69,14 @@ tests/
 1. Read `~/.agents/.skill-lock.json` for installed skills
 2. For each skill, get `skillFolderHash` from lock file
 3. POST to `https://add-skill.vercel.sh/check-updates` with:
+
    ```json
    {
      "skills": [{ "name": "...", "source": "...", "skillFolderHash": "..." }],
      "forceRefresh": true
    }
    ```
+
 4. API fetches fresh content from GitHub, computes hash, compares
 5. Returns list of skills with different hashes (updates available)
 
@@ -111,7 +113,7 @@ pnpm install
 pnpm build
 
 # Test locally
-pnpm dev add vercel-labs/agent-skills --list
+pnpm dev add wizeline/agent-skills --list
 pnpm dev experimental_sync
 pnpm dev check
 pnpm dev update

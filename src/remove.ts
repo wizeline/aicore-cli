@@ -11,6 +11,7 @@ import {
   getCanonicalPath,
   getCanonicalSkillsDir,
   sanitizeName,
+  adaptSubdir,
 } from './installer.ts';
 
 export interface RemoveOptions {
@@ -48,13 +49,13 @@ export async function removeCommand(skillNames: string[], options: RemoveOptions
     await scanDir(getCanonicalSkillsDir(true, cwd));
     for (const agent of Object.values(agents)) {
       if (agent.globalSkillsDir !== undefined) {
-        await scanDir(agent.globalSkillsDir);
+        await scanDir(adaptSubdir(agent.globalSkillsDir));
       }
     }
   } else {
     await scanDir(getCanonicalSkillsDir(false, cwd));
     for (const agent of Object.values(agents)) {
-      await scanDir(join(cwd, agent.skillsDir));
+      await scanDir(join(cwd, adaptSubdir(agent.skillsDir)));
     }
   }
 
@@ -163,9 +164,9 @@ export async function removeCommand(skillNames: string[], options: RemoveOptions
         const pathsToCleanup = new Set([skillPath]);
         const sanitizedName = sanitizeName(skillName);
         if (isGlobal && agent.globalSkillsDir) {
-          pathsToCleanup.add(join(agent.globalSkillsDir, sanitizedName));
+          pathsToCleanup.add(join(adaptSubdir(agent.globalSkillsDir), sanitizedName));
         } else {
-          pathsToCleanup.add(join(cwd, agent.skillsDir, sanitizedName));
+          pathsToCleanup.add(join(cwd, adaptSubdir(agent.skillsDir), sanitizedName));
         }
 
         for (const pathToCleanup of pathsToCleanup) {
