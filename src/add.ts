@@ -1661,14 +1661,29 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
     });
 
     if (skills.length === 0) {
-      spinner.stop(pc.red(`No ${SKILLS} found`));
-      p.outro(
-        pc.red(
-          `No valid ${SKILLS} found. The repository must contain SKILL.md files with a name and description.`
-        )
-      );
-      await cleanup(tempDir);
-      process.exit(1);
+      if (process.env.IS_AGENTS_CLI === '1') {
+        // Agents don't require SKILL.md — install the repository itself as an agent
+        const agentName =
+          (source ?? basename(skillsDir))
+            .split('/')
+            .pop()!
+            .replace(/\.git$/, '') || basename(skillsDir);
+        skills.push({
+          name: agentName,
+          description: '',
+          path: skillsDir,
+          rawContent: '',
+        });
+      } else {
+        spinner.stop(pc.red(`No ${SKILLS} found`));
+        p.outro(
+          pc.red(
+            `No valid ${SKILLS} found. The repository must contain SKILL.md files with a name and description in the frontmatter.`
+          )
+        );
+        await cleanup(tempDir);
+        process.exit(1);
+      }
     }
 
     spinner.stop(`Found ${pc.green(skills.length)} ${skills.length > 1 ? SKILLS : SKILL}`);
