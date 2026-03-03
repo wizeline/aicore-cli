@@ -32,6 +32,10 @@ initTelemetry(VERSION);
 
 const binaryName = process.env.IS_AGENTS_CLI ? 'agents' : 'skills';
 const alternativeBinary = process.env.IS_AGENTS_CLI ? 'skills' : 'agents';
+const SKILL = process.env.IS_AGENTS_CLI ? 'agent' : 'skill';
+const SKILLS = process.env.IS_AGENTS_CLI ? 'agents' : 'skills';
+const SkillCap = process.env.IS_AGENTS_CLI ? 'Agent' : 'Skill';
+const SkillsCap = process.env.IS_AGENTS_CLI ? 'Agents' : 'Skills';
 
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
@@ -81,38 +85,38 @@ function showBanner(): void {
   console.log(`${DIM}The open agent skills & subagents ecosystem${RESET}`);
   console.log();
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} add ${DIM}<package>${RESET}        ${DIM}Add a new skill${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} add ${DIM}<package>${RESET}        ${DIM}Add a new ${SKILL}${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} remove${RESET}               ${DIM}Remove installed skills${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} remove${RESET}               ${DIM}Remove installed ${SKILLS}${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} list${RESET}                 ${DIM}List installed skills${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} list${RESET}                 ${DIM}List installed ${SKILLS}${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} find ${DIM}[query]${RESET}         ${DIM}Search for skills${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} find ${DIM}[query]${RESET}         ${DIM}Search for ${SKILLS}${RESET}`
   );
   console.log();
   console.log(
     `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} check${RESET}                ${DIM}Check for updates${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} update${RESET}               ${DIM}Update all skills${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} update${RESET}               ${DIM}Update all ${SKILLS}${RESET}`
   );
   console.log();
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} experimental_install${RESET} ${DIM}Restore from skills-lock.json${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} experimental_install${RESET} ${DIM}Restore from ${SKILLS}-lock.json${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} init ${DIM}[name]${RESET}          ${DIM}Create a new skill${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} init ${DIM}[name]${RESET}          ${DIM}Create a new ${SKILL}${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} experimental_sync${RESET}    ${DIM}Sync skills from node_modules${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} experimental_sync${RESET}    ${DIM}Sync ${SKILLS} from node_modules${RESET}`
   );
   console.log();
   console.log(`${DIM}try:${RESET} npx ${binaryName} add wizeline/agent-skills`);
   console.log();
-  console.log(`Discover more skills at ${TEXT}https://skills.sh/${RESET}`);
+  console.log(`Discover more ${SKILLS} at ${TEXT}https://skills.sh/${RESET}`);
   console.log(
     `${DIM}Note:${RESET} You can also use ${TEXT}npx ${alternativeBinary}${RESET} to manage ${alternativeBinary} specifically.`
   );
@@ -123,28 +127,28 @@ function showHelp(): void {
   console.log(`
 ${BOLD}Usage:${RESET} ${binaryName} <command> [options]
 
-${BOLD}Manage Skills:${RESET}
-  add <package>        Add a skill package (alias: a)
+${BOLD}Manage ${SkillsCap}:${RESET}
+  add <package>        Add a ${SKILL} package (alias: a)
                        e.g. wizeline/agent-skills
                             https://github.com/wizeline/agent-skills
-  remove [skills]      Remove installed skills
-  list, ls             List installed skills
-  find [query]         Search for skills interactively
+  remove [${SKILLS}]      Remove installed ${SKILLS}
+  list, ls             List installed ${SKILLS}
+  find [query]         Search for ${SKILLS} interactively
 
 ${BOLD}Updates:${RESET}
-  check                Check for available skill updates
-  update               Update all skills to latest versions
+  check                Check for available ${SKILL} updates
+  update               Update all ${SKILLS} to latest versions
 
 ${BOLD}Project:${RESET}
-  experimental_install Restore skills from skills-lock.json
-  init [name]          Initialize a skill (creates <name>/SKILL.md or ./SKILL.md)
-  experimental_sync    Sync skills from node_modules into agent directories
+  experimental_install Restore ${SKILLS} from ${SKILLS}-lock.json
+  init [name]          Initialize a ${SKILL} (creates <name>/SKILL.md or ./SKILL.md)
+  experimental_sync    Sync ${SKILLS} from node_modules into agent directories
 
 ${BOLD}Add Options:${RESET}
-  -g, --global           Install skill globally (user-level) instead of project-level
+  -g, --global           Install ${SKILL} globally (user-level) instead of project-level
   -a, --agent <agents>   Specify agents to install to (use '*' for all agents)
-  -s, --skill <skills>   Specify skill names to install (use '*' for all skills)
-  -l, --list             List available skills in the repository without installing
+  -s, --skill <${SKILLS}>   Specify ${SKILL} names to install (use '*' for all ${SKILLS})
+  -l, --list             List available ${SKILLS} in the repository without installing
   -y, --yes              Skip confirmation prompts
   --copy                 Copy files instead of symlinking to agent directories
   --all                  Shorthand for --skill '*' --agent '*' -y
@@ -153,16 +157,16 @@ ${BOLD}Add Options:${RESET}
 ${BOLD}Remove Options:${RESET}
   -g, --global           Remove from global scope
   -a, --agent <agents>   Remove from specific agents (use '*' for all agents)
-  -s, --skill <skills>   Specify skills to remove (use '*' for all skills)
+  -s, --skill <${SKILLS}>   Specify ${SKILLS} to remove (use '*' for all ${SKILLS})
   -y, --yes              Skip confirmation prompts
   --all                  Shorthand for --skill '*' --agent '*' -y
-  
+
 ${BOLD}Experimental Sync Options:${RESET}
   -a, --agent <agents>   Specify agents to install to (use '*' for all agents)
   -y, --yes              Skip confirmation prompts
 
 ${BOLD}List Options:${RESET}
-  -g, --global           List global skills (default: project)
+  -g, --global           List global ${SKILLS} (default: project)
   -a, --agent <agents>   Filter by specific agents
 
 ${BOLD}Options:${RESET}
@@ -177,50 +181,50 @@ ${BOLD}Examples:${RESET}
   ${DIM}$${RESET} ${binaryName} remove                        ${DIM}# interactive remove${RESET}
   ${DIM}$${RESET} ${binaryName} remove web-design             ${DIM}# remove by name${RESET}
   ${DIM}$${RESET} ${binaryName} rm --global frontend-design
-  ${DIM}$${RESET} ${binaryName} list                          ${DIM}# list project skills${RESET}
-  ${DIM}$${RESET} ${binaryName} ls -g                         ${DIM}# list global skills${RESET}
+  ${DIM}$${RESET} ${binaryName} list                          ${DIM}# list project ${SKILLS}${RESET}
+  ${DIM}$${RESET} ${binaryName} ls -g                         ${DIM}# list global ${SKILLS}${RESET}
   ${DIM}$${RESET} ${binaryName} ls -a claude-code             ${DIM}# filter by agent${RESET}
   ${DIM}$${RESET} ${binaryName} find                          ${DIM}# interactive search${RESET}
   ${DIM}$${RESET} ${binaryName} find typescript               ${DIM}# search by keyword${RESET}
   ${DIM}$${RESET} ${binaryName} check
   ${DIM}$${RESET} ${binaryName} update
-  ${DIM}$${RESET} ${binaryName} experimental_install            ${DIM}# restore from skills-lock.json${RESET}
-  ${DIM}$${RESET} ${binaryName} init my-skill
+  ${DIM}$${RESET} ${binaryName} experimental_install            ${DIM}# restore from ${SKILLS}-lock.json${RESET}
+  ${DIM}$${RESET} ${binaryName} init my-${SKILL}
   ${DIM}$${RESET} ${binaryName} experimental_sync              ${DIM}# sync from node_modules${RESET}
   ${DIM}$${RESET} ${binaryName} experimental_sync -y           ${DIM}# sync without prompts${RESET}
 
-Discover more skills at ${TEXT}https://skills.sh/${RESET}
+Discover more ${SKILLS} at ${TEXT}https://skills.sh/${RESET}
 `);
 }
 
 function showRemoveHelp(): void {
   console.log(`
-${BOLD}Usage:${RESET} ${binaryName} remove [skills...] [options]
+${BOLD}Usage:${RESET} ${binaryName} remove [${SKILLS}...] [options]
 
 ${BOLD}Description:${RESET}
-  Remove installed skills from agents. If no skill names are provided,
+  Remove installed ${SKILLS} from agents. If no ${SKILL} names are provided,
   an interactive selection menu will be shown.
 
 ${BOLD}Arguments:${RESET}
-  skills            Optional skill names to remove (space-separated)
+  ${SKILLS}            Optional ${SKILL} names to remove (space-separated)
 
 ${BOLD}Options:${RESET}
   -g, --global       Remove from global scope (~/) instead of project scope
   -a, --agent        Remove from specific agents (use '*' for all agents)
-  -s, --skill        Specify skills to remove (use '*' for all skills)
+  -s, --skill        Specify ${SKILLS} to remove (use '*' for all ${SKILLS})
   -y, --yes          Skip confirmation prompts
   --all              Shorthand for --skill '*' --agent '*' -y
 
 ${BOLD}Examples:${RESET}
   ${DIM}$${RESET} ${binaryName} remove                           ${DIM}# interactive selection${RESET}
-  ${DIM}$${RESET} ${binaryName} remove my-skill                   ${DIM}# remove specific skill${RESET}
-  ${DIM}$${RESET} ${binaryName} remove skill1 skill2 -y           ${DIM}# remove multiple skills${RESET}
-  ${DIM}$${RESET} ${binaryName} remove --global my-skill          ${DIM}# remove from global scope${RESET}
-  ${DIM}$${RESET} ${binaryName} rm --agent claude-code my-skill   ${DIM}# remove from specific agent${RESET}
-  ${DIM}$${RESET} ${binaryName} remove --all                      ${DIM}# remove all skills${RESET}
-  ${DIM}$${RESET} ${binaryName} remove --skill '*' -a cursor      ${DIM}# remove all skills from cursor${RESET}
+  ${DIM}$${RESET} ${binaryName} remove my-${SKILL}                   ${DIM}# remove specific ${SKILL}${RESET}
+  ${DIM}$${RESET} ${binaryName} remove ${SKILL}1 ${SKILL}2 -y           ${DIM}# remove multiple ${SKILLS}${RESET}
+  ${DIM}$${RESET} ${binaryName} remove --global my-${SKILL}          ${DIM}# remove from global scope${RESET}
+  ${DIM}$${RESET} ${binaryName} rm --agent claude-code my-${SKILL}   ${DIM}# remove from specific agent${RESET}
+  ${DIM}$${RESET} ${binaryName} remove --all                      ${DIM}# remove all ${SKILLS}${RESET}
+  ${DIM}$${RESET} ${binaryName} remove --skill '*' -a cursor      ${DIM}# remove all ${SKILLS} from cursor${RESET}
 
-Discover more skills at ${TEXT}https://skills.sh/${RESET}
+Discover more ${SKILLS} at ${TEXT}https://skills.sh/${RESET}
 `);
 }
 
@@ -234,7 +238,7 @@ function runInit(args: string[]): void {
   const displayPath = hasName ? `${skillName}/SKILL.md` : 'SKILL.md';
 
   if (existsSync(skillFile)) {
-    console.log(`${TEXT}Skill already exists at ${DIM}${displayPath}${RESET}`);
+    console.log(`${TEXT}${SkillCap} already exists at ${DIM}${displayPath}${RESET}`);
     return;
   }
 
@@ -244,16 +248,16 @@ function runInit(args: string[]): void {
 
   const skillContent = `---
 name: ${skillName}
-description: A brief description of what this skill does
+description: A brief description of what this ${SKILL} does
 ---
 
 # ${skillName}
 
-Instructions for the agent to follow when this skill is activated.
+Instructions for the agent to follow when this ${SKILL} is activated.
 
 ## When to use
 
-Describe when this skill should be used.
+Describe when this ${SKILL} should be used.
 
 ## Instructions
 
@@ -264,13 +268,13 @@ Describe when this skill should be used.
 
   writeFileSync(skillFile, skillContent);
 
-  console.log(`${TEXT}Initialized skill: ${DIM}${skillName}${RESET}`);
+  console.log(`${TEXT}Initialized ${SKILL}: ${DIM}${skillName}${RESET}`);
   console.log();
   console.log(`${DIM}Created:${RESET}`);
   console.log(`  ${displayPath}`);
   console.log();
   console.log(`${DIM}Next steps:${RESET}`);
-  console.log(`  1. Edit ${TEXT}${displayPath}${RESET} to define your skill instructions`);
+  console.log(`  1. Edit ${TEXT}${displayPath}${RESET} to define your ${SKILL} instructions`);
   console.log(
     `  2. Update the ${TEXT}name${RESET} and ${TEXT}description${RESET} in the frontmatter`
   );
@@ -283,7 +287,7 @@ Describe when this skill should be used.
     `  ${DIM}URL:${RESET}     Host the file, then ${TEXT}npx ${binaryName} add https://example.com/${displayPath}${RESET}`
   );
   console.log();
-  console.log(`Browse existing skills for inspiration at ${TEXT}https://skills.sh/${RESET}`);
+  console.log(`Browse existing ${SKILLS} for inspiration at ${TEXT}https://skills.sh/${RESET}`);
   console.log();
 }
 
@@ -368,15 +372,17 @@ function writeSkillLock(lock: SkillLockFile): void {
 }
 
 async function runCheck(args: string[] = []): Promise<void> {
-  console.log(`${TEXT}Checking for skill updates...${RESET}`);
+  console.log(`${TEXT}Checking for ${SKILL} updates...${RESET}`);
   console.log();
 
   const lock = readSkillLock();
   const skillNames = Object.keys(lock.skills);
 
   if (skillNames.length === 0) {
-    console.log(`${DIM}No skills tracked in lock file.${RESET}`);
-    console.log(`${DIM}Install skills with${RESET} ${TEXT}npx ${binaryName} add <package>${RESET}`);
+    console.log(`${DIM}No ${SKILLS} tracked in lock file.${RESET}`);
+    console.log(
+      `${DIM}Install ${SKILLS} with${RESET} ${TEXT}npx ${binaryName} add <package>${RESET}`
+    );
     return;
   }
 
@@ -404,11 +410,11 @@ async function runCheck(args: string[] = []): Promise<void> {
 
   const totalSkills = skillNames.length - skippedCount;
   if (totalSkills === 0) {
-    console.log(`${DIM}No GitHub skills to check.${RESET}`);
+    console.log(`${DIM}No GitHub ${SKILLS} to check.${RESET}`);
     return;
   }
 
-  console.log(`${DIM}Checking ${totalSkills} skill(s) for updates...${RESET}`);
+  console.log(`${DIM}Checking ${totalSkills} ${SKILL}(s) for updates...${RESET}`);
 
   const updates: Array<{ name: string; source: string }> = [];
   const errors: Array<{ name: string; source: string; error: string }> = [];
@@ -440,7 +446,7 @@ async function runCheck(args: string[] = []): Promise<void> {
   console.log();
 
   if (updates.length === 0) {
-    console.log(`${TEXT}✓ All skills are up to date${RESET}`);
+    console.log(`${TEXT}✓ All ${SKILLS} are up to date${RESET}`);
   } else {
     console.log(`${TEXT}${updates.length} update(s) available:${RESET}`);
     console.log();
@@ -450,13 +456,13 @@ async function runCheck(args: string[] = []): Promise<void> {
     }
     console.log();
     console.log(
-      `${DIM}Run${RESET} ${TEXT}npx ${binaryName} update${RESET} ${DIM}to update all skills${RESET}`
+      `${DIM}Run${RESET} ${TEXT}npx ${binaryName} update${RESET} ${DIM}to update all ${SKILLS}${RESET}`
     );
   }
 
   if (errors.length > 0) {
     console.log();
-    console.log(`${DIM}Could not check ${errors.length} skill(s) (may need reinstall)${RESET}`);
+    console.log(`${DIM}Could not check ${errors.length} ${SKILL}(s) (may need reinstall)${RESET}`);
   }
 
   // Track telemetry
@@ -470,15 +476,17 @@ async function runCheck(args: string[] = []): Promise<void> {
 }
 
 async function runUpdate(): Promise<void> {
-  console.log(`${TEXT}Checking for skill updates...${RESET}`);
+  console.log(`${TEXT}Checking for ${SKILL} updates...${RESET}`);
   console.log();
 
   const lock = readSkillLock();
   const skillNames = Object.keys(lock.skills);
 
   if (skillNames.length === 0) {
-    console.log(`${DIM}No skills tracked in lock file.${RESET}`);
-    console.log(`${DIM}Install skills with${RESET} ${TEXT}npx ${binaryName} add <package>${RESET}`);
+    console.log(`${DIM}No ${SKILLS} tracked in lock file.${RESET}`);
+    console.log(
+      `${DIM}Install ${SKILLS} with${RESET} ${TEXT}npx ${binaryName} add <package>${RESET}`
+    );
     return;
   }
 
@@ -512,12 +520,12 @@ async function runUpdate(): Promise<void> {
   }
 
   if (checkedCount === 0) {
-    console.log(`${DIM}No skills to check.${RESET}`);
+    console.log(`${DIM}No ${SKILLS} to check.${RESET}`);
     return;
   }
 
   if (updates.length === 0) {
-    console.log(`${TEXT}✓ All skills are up to date${RESET}`);
+    console.log(`${TEXT}✓ All ${SKILLS} are up to date${RESET}`);
     console.log();
     return;
   }
@@ -569,10 +577,10 @@ async function runUpdate(): Promise<void> {
 
   console.log();
   if (successCount > 0) {
-    console.log(`${TEXT}✓ Updated ${successCount} skill(s)${RESET}`);
+    console.log(`${TEXT}✓ Updated ${successCount} ${SKILL}(s)${RESET}`);
   }
   if (failCount > 0) {
-    console.log(`${DIM}Failed to update ${failCount} skill(s)${RESET}`);
+    console.log(`${DIM}Failed to update ${failCount} ${SKILL}(s)${RESET}`);
   }
 
   // Track telemetry
