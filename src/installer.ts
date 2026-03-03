@@ -201,7 +201,14 @@ async function createSymlink(target: string, linkPath: string): Promise<boolean>
     const relativePath = relative(realLinkDir, target);
     const symlinkType = platform() === 'win32' ? 'junction' : undefined;
 
-    await symlink(relativePath, linkPath, symlinkType);
+    // On Windows, junctions require absolute paths. Node.js internally calls
+    // path.resolve() on the target using process.cwd() as the base, NOT the
+    // link's parent directory — so passing a relative path produces a wrong
+    // absolute path (e.g. C:\.agents\agents\... instead of C:\project\.agents\agents\...).
+    // Since `target` (canonicalDir) is always absolute, use it directly for junctions.
+    const symlinkTarget = symlinkType === 'junction' ? resolve(target) : relativePath;
+
+    await symlink(symlinkTarget, linkPath, symlinkType);
     return true;
   } catch {
     return false;

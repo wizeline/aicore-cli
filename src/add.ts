@@ -1676,7 +1676,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         path: agentPath,
         rawContent: '',
       });
-      spinner.stop(`Found ${pc.green(1)} agent`);
+      spinner.stop(`Found ${pc.green(1)} ${SKILL}`);
     } else {
       // Include internal skills when a specific skill is explicitly requested
       // (via --skill or @skill syntax)
@@ -1832,7 +1832,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         }
 
         selected = await p.groupMultiselect({
-          message: `Select skills to install ${pc.dim('(space to toggle)')}`,
+          message: `Select ${SKILLS} to install ${pc.dim('(space to toggle)')}`,
           options: grouped,
           required: true,
         });
