@@ -1668,11 +1668,8 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         process.exit(1);
       }
 
-      const agentName =
-        parsed.subpath
-          .split('/')
-          .pop()!
-          .replace(/\.git$/, '') || basename(skillsDir);
+      // Derive the name directly from the resolved path — the most reliable source
+      const agentName = basename(agentPath);
       skills.push({
         name: agentName,
         description: '',
@@ -1695,11 +1692,9 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       if (skills.length === 0) {
         if (process.env.IS_AGENTS_CLI === '1') {
           // No subpath given and no SKILL.md found — install the whole repo as an agent.
-          const agentName =
-            (source ?? basename(skillsDir))
-              .split('/')
-              .pop()!
-              .replace(/\.git$/, '') || basename(skillsDir);
+          // Derive name from the git URL (e.g. https://github.com/owner/repo.git → repo)
+          // which is more reliable than parsing the raw source string.
+          const agentName = basename(parsed.url).replace(/\.git$/, '') || basename(skillsDir);
           skills.push({
             name: agentName,
             description: '',
