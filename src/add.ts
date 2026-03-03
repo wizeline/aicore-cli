@@ -65,6 +65,7 @@ import {
   saveSelectedAgents,
 } from './skill-lock.ts';
 import { addSkillToLocalLock, computeSkillFolderHash } from './local-lock.ts';
+import { UNIVERSAL_SKILLS_DIR } from './constants.ts';
 import type { Skill, AgentType, RemoteSkill } from './types.ts';
 import packageJson from '../package.json' with { type: 'json' };
 export function initTelemetry(version: string): void {
@@ -367,7 +368,7 @@ async function selectAgentsInteractive(options: {
 
   // Universal agents shown as locked section
   const universalSection = {
-    title: 'Universal (.agents/skills)',
+    title: `Universal (${UNIVERSAL_SKILLS_DIR})`,
     items: universalAgents.map((a) => ({
       value: a,
       label: agents[a].displayName,
@@ -1219,7 +1220,7 @@ async function handleWellKnownSkills(
       }
     }
 
-    const title = pc.green(`Installed ${skillCount} skill${skillCount !== 1 ? 's' : ''}`);
+    const title = pc.green(`Installed ${skillCount} ${skillCount !== 1 ? SKILLS : SKILL}`);
     p.note(resultLines.join('\n'), title);
 
     // Show symlink failure warning (only for symlink mode)
@@ -2338,7 +2339,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         printSkillResults(ungroupedResults);
       }
 
-      const title = pc.green(`Installed ${skillCount} skill${skillCount !== 1 ? 's' : ''}`);
+      const title = pc.green(`Installed ${skillCount} ${skillCount !== 1 ? SKILLS : SKILL}`);
       p.note(resultLines.join('\n'), title);
 
       // Show symlink failure warning (only for symlink mode)
