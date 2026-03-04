@@ -398,7 +398,7 @@ async function selectAgentsInteractive(options: {
     : [];
 
   const selected = await searchMultiselect({
-    message: 'Which agents do you want to install to?',
+    message: 'Which AI assistants do you want to install to?',
     items: otherChoices,
     initialSelected,
     lockedSection: universalSection,
@@ -498,7 +498,7 @@ async function handleRemoteSkill(
   if (options.agent?.includes('*')) {
     // --agent '*' selects all agents
     targetAgents = validAgents as AgentType[];
-    p.log.info(`Installing to all ${targetAgents.length} agents`);
+    p.log.info(`Installing to all ${targetAgents.length} AI assistants`);
   } else if (options.agent && options.agent.length > 0) {
     const invalidAgents = options.agent.filter((a) => !validAgents.includes(a));
 
@@ -510,10 +510,10 @@ async function handleRemoteSkill(
 
     targetAgents = options.agent as AgentType[];
   } else {
-    spinner.start('Loading agents...');
+    spinner.start('Loading AI assistants...');
     const installedAgents = await detectInstalledAgents();
     const totalAgents = Object.keys(agents).length;
-    spinner.stop(`${totalAgents} agents`);
+    spinner.stop(`${totalAgents} AI assistants`);
 
     if (installedAgents.length === 0) {
       if (options.yes) {
@@ -596,7 +596,11 @@ async function handleRemoteSkill(
           label: 'Symlink (Recommended)',
           hint: 'Single source of truth, easy updates',
         },
-        { value: 'copy', label: 'Copy to all agents', hint: 'Independent copies for each agent' },
+        {
+          value: 'copy',
+          label: 'Copy to all AI assistants',
+          hint: 'Independent copies for each assistant',
+        },
       ],
     });
 
@@ -883,7 +887,11 @@ async function handleWellKnownSkills(
     const skillChoices = skills.map((s) => ({
       value: s,
       label: s.installName,
-      hint: s.description.length > 60 ? s.description.slice(0, 57) + '...' : s.description,
+      hint: s.description
+        ? s.description.length > 60
+          ? s.description.slice(0, 57) + '...'
+          : s.description
+        : basename(s.sourceUrl),
     }));
 
     const selected = await multiselect({
@@ -907,7 +915,7 @@ async function handleWellKnownSkills(
   if (options.agent?.includes('*')) {
     // --agent '*' selects all agents
     targetAgents = validAgents as AgentType[];
-    p.log.info(`Installing to all ${targetAgents.length} agents`);
+    p.log.info(`Installing to all ${targetAgents.length} AI assistants`);
   } else if (options.agent && options.agent.length > 0) {
     const invalidAgents = options.agent.filter((a) => !validAgents.includes(a));
 
@@ -919,17 +927,17 @@ async function handleWellKnownSkills(
 
     targetAgents = options.agent as AgentType[];
   } else {
-    spinner.start('Loading agents...');
+    spinner.start('Loading AI assistants...');
     const installedAgents = await detectInstalledAgents();
     const totalAgents = Object.keys(agents).length;
-    spinner.stop(`${totalAgents} agents`);
+    spinner.stop(`${totalAgents} AI assistants`);
 
     if (installedAgents.length === 0) {
       if (options.yes) {
         targetAgents = validAgents as AgentType[];
-        p.log.info('Installing to all agents');
+        p.log.info('Installing to all AI assistants');
       } else {
-        p.log.info(`Select agents to install ${SKILLS} to`);
+        p.log.info(`Select AI assistants to install ${SKILLS} to`);
 
         const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
           value: key as AgentType,
@@ -938,7 +946,7 @@ async function handleWellKnownSkills(
 
         // Use helper to prompt with search
         const selected = await promptForAgents(
-          'Which agents do you want to install to?',
+          'Which AI assistants do you want to install to?',
           allAgentChoices
         );
 
@@ -1014,7 +1022,11 @@ async function handleWellKnownSkills(
           label: 'Symlink (Recommended)',
           hint: 'Single source of truth, easy updates',
         },
-        { value: 'copy', label: 'Copy to all agents', hint: 'Independent copies for each agent' },
+        {
+          value: 'copy',
+          label: 'Copy to all AI assistants',
+          hint: 'Independent copies for each assistant',
+        },
       ],
     });
 
@@ -1310,7 +1322,7 @@ async function handleDirectUrlSkillLegacy(
   if (options.agent?.includes('*')) {
     // --agent '*' selects all agents
     targetAgents = validAgents as AgentType[];
-    p.log.info(`Installing to all ${targetAgents.length} agents`);
+    p.log.info(`Installing to all ${targetAgents.length} AI assistants`);
   } else if (options.agent && options.agent.length > 0) {
     const invalidAgents = options.agent.filter((a) => !validAgents.includes(a));
 
@@ -1322,17 +1334,17 @@ async function handleDirectUrlSkillLegacy(
 
     targetAgents = options.agent as AgentType[];
   } else {
-    spinner.start('Loading agents...');
+    spinner.start('Loading AI assistants...');
     const installedAgents = await detectInstalledAgents();
     const totalAgents = Object.keys(agents).length;
-    spinner.stop(`${totalAgents} agents`);
+    spinner.stop(`${totalAgents} AI assistants`);
 
     if (installedAgents.length === 0) {
       if (options.yes) {
         targetAgents = validAgents as AgentType[];
-        p.log.info('Installing to all agents');
+        p.log.info('Installing to all AI assistants');
       } else {
-        p.log.info(`Select agents to install ${SKILLS} to`);
+        p.log.info(`Select AI assistants to install ${SKILLS} to`);
 
         const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
           value: key as AgentType,
@@ -1341,7 +1353,7 @@ async function handleDirectUrlSkillLegacy(
 
         // Use helper to prompt with search
         const selected = await promptForAgents(
-          'Which agents do you want to install to?',
+          'Which AI assistants do you want to install to?',
           allAgentChoices
         );
 
@@ -1686,87 +1698,9 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
           path: agentBaseDir,
           rawContent: '',
         });
-        spinner.stop(`Found ${pc.green(1)} ${SKILL}`);
-      } else if (agentFiles.length === 1) {
-        // Single agent found — use it directly
-        const af = agentFiles[0]!;
-        skills.push({
-          name: af.name,
-          description: af.description,
-          path: af.filePath,
-          rawContent: '',
-        });
-        spinner.stop(`Found ${pc.green(1)} ${SKILL}`);
       } else {
-        // Multiple agents found — show an interactive selection
-        spinner.stop(`Found ${pc.green(agentFiles.length)} ${SKILLS}`);
-
-        let selectedAgentFiles: AgentFile[];
-
-        if (options.skill?.includes('*') || options.yes) {
-          // --agent '*' or -y: install all
-          selectedAgentFiles = agentFiles;
-          p.log.info(`Installing all ${agentFiles.length} ${SKILLS}`);
-        } else if (options.skill && options.skill.length > 0) {
-          // --agent <name>: filter by name
-          selectedAgentFiles = agentFiles.filter((af) =>
-            options.skill!.some(
-              (name) =>
-                af.name.toLowerCase() === name.toLowerCase() ||
-                basename(af.filePath, '.md').toLowerCase() === name.toLowerCase()
-            )
-          );
-          if (selectedAgentFiles.length === 0) {
-            p.log.error(`No matching ${SKILLS} found for: ${options.skill.join(', ')}`);
-            p.log.info(`Available ${SKILLS}:`);
-            for (const af of agentFiles) {
-              p.log.message(`  - ${af.name}`);
-            }
-            await cleanup(tempDir);
-            process.exit(1);
-          }
-        } else {
-          if (options.list) {
-            console.log();
-            p.log.step(pc.bold(`Available ${SkillsCap}`));
-            for (const af of agentFiles) {
-              p.log.message(`  ${pc.cyan(af.name)}`);
-              if (af.description) p.log.message(`    ${pc.dim(af.description)}`);
-            }
-            console.log();
-            p.outro(`Use --${SKILL} <name> to install specific ${SKILLS}`);
-            await cleanup(tempDir);
-            process.exit(0);
-          }
-
-          // Interactive multiselect
-          const agentChoices = agentFiles.map((af) => ({
-            value: af,
-            label: af.name,
-            hint: af.description
-              ? af.description.length > 60
-                ? af.description.slice(0, 57) + '...'
-                : af.description
-              : basename(af.filePath),
-          }));
-
-          const selected = await multiselect({
-            message: `Select ${SKILLS} to install`,
-            options: agentChoices,
-            required: true,
-          });
-
-          if (p.isCancel(selected)) {
-            p.cancel('Installation cancelled');
-            await cleanup(tempDir);
-            process.exit(0);
-          }
-
-          selectedAgentFiles = selected as AgentFile[];
-        }
-
-        // Convert selected AgentFile entries to Skill objects
-        for (const af of selectedAgentFiles) {
+        // Convert all discovered AgentFile entries to Skill objects for general selection logic
+        for (const af of agentFiles) {
           skills.push({
             name: af.name,
             description: af.description,
@@ -1797,9 +1731,9 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         await cleanup(tempDir);
         process.exit(1);
       }
-
-      spinner.stop(`Found ${pc.green(skills.length)} ${skills.length > 1 ? SKILLS : SKILL}`);
     }
+
+    spinner.stop(`Found ${pc.green(skills.length)} ${skills.length > 1 ? SKILLS : SKILL}`);
 
     if (options.list) {
       console.log();
@@ -1912,7 +1846,11 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
           grouped[groupName]!.push({
             value: s,
             label: getSkillDisplayName(s),
-            hint: s.description.length > 60 ? s.description.slice(0, 57) + '...' : s.description,
+            hint: s.description
+              ? s.description.length > 60
+                ? s.description.slice(0, 57) + '...'
+                : s.description
+              : basename(s.path),
           });
         }
 
@@ -1925,7 +1863,11 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         const skillChoices = sortedSkills.map((s) => ({
           value: s,
           label: getSkillDisplayName(s),
-          hint: s.description.length > 60 ? s.description.slice(0, 57) + '...' : s.description,
+          hint: s.description
+            ? s.description.length > 60
+              ? s.description.slice(0, 57) + '...'
+              : s.description
+            : basename(s.path),
         }));
 
         selected = await multiselect({
@@ -1960,7 +1902,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
     if (options.agent?.includes('*')) {
       // --agent '*' selects all agents
       targetAgents = validAgents as AgentType[];
-      p.log.info(`Installing to all ${targetAgents.length} agents`);
+      p.log.info(`Installing to all ${targetAgents.length} AI assistants`);
     } else if (options.agent && options.agent.length > 0) {
       const invalidAgents = options.agent.filter((a) => !validAgents.includes(a));
 
@@ -1973,17 +1915,17 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
 
       targetAgents = options.agent as AgentType[];
     } else {
-      spinner.start('Loading agents...');
+      spinner.start('Loading AI assistants...');
       const installedAgents = await detectInstalledAgents();
       const totalAgents = Object.keys(agents).length;
-      spinner.stop(`${totalAgents} agents`);
+      spinner.stop(`${totalAgents} AI assistants`);
 
       if (installedAgents.length === 0) {
         if (options.yes) {
           targetAgents = validAgents as AgentType[];
-          p.log.info('Installing to all agents');
+          p.log.info('Installing to all AI assistants');
         } else {
-          p.log.info(`Select agents to install ${SKILLS} to`);
+          p.log.info(`Select AI assistants to install ${SKILLS} to`);
 
           const allAgentChoices = Object.entries(agents).map(([key, config]) => ({
             value: key as AgentType,
@@ -1992,7 +1934,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
 
           // Use helper to prompt with search
           const selected = await promptForAgents(
-            'Which agents do you want to install to?',
+            'Which AI assistants do you want to install to?',
             allAgentChoices
           );
 
@@ -2071,7 +2013,11 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
             label: 'Symlink (Recommended)',
             hint: 'Single source of truth, easy updates',
           },
-          { value: 'copy', label: 'Copy to all agents', hint: 'Independent copies for each agent' },
+          {
+            value: 'copy',
+            label: 'Copy to all AI assistants',
+            hint: 'Independent copies for each assistant',
+          },
         ],
       });
 

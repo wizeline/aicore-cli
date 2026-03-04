@@ -6,6 +6,56 @@
       "sourceType": "github",
       "computedHash": "69372752fb055fdad9932ba64f21de3068e64c0dcebd7ecc3928aff849250d97"
     },
+    "authoring-api-docs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "b8a571ffd317e0191ee4f3753174d28828782ff6899b5b8c1191fdde3c627ae1"
+    },
+    "authoring-architecture-docs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "523ce20408d87da925d575a07d9efe8c8df6c579ab996e542c2b80ef7611a798"
+    },
+    "authoring-release-docs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "c7199129c6a8d60fdcf38596955c1be48db7ba1133b0fbe17f077372aa929896"
+    },
+    "authoring-technical-docs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "0e73ca52818382d819d869835e15912c1643352afbb2812f93a90b74b0a28b53"
+    },
+    "authoring-user-docs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "c936b18ee2bcedf66951ce3356db92000b47f77e9ef8024d91ac25374b509f6b"
+    },
+    "automating-docs-updates": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "59ca3dc4bacb5345f641ad5e60b69fb864f1c4f964f4171087b74808bba19831"
+    },
+    "editing-docx-files": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "2ced8e93ec5dd35a716da7b2bc45309f21feb764145e4599a9410a716088a774"
+    },
+    "editing-pptx-files": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "5026a06791cec16a8e0c471d01fca4de8a01c000889008a25fbf81bd57de80e8"
+    },
+    "processing-pdfs": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "1cc0856d46c3c42aa67f2b6de1a8dd8e8711d7d5009a1d093c406de044993a08"
+    },
+    "sourcing-from-atlassian": {
+      "source": "wizeline/sdlc-agents",
+      "sourceType": "github",
+      "computedHash": "245d34c6463205b85d681393ebc8253515a9f9699965c69e90bc77ba40f325a0"
+    },
     "unit-test-analyzing-code-coverage": {
       "source": "wizeline/sdlc-agents",
       "sourceType": "github",

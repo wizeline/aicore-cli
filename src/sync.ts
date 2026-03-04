@@ -203,7 +203,7 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
 
   if (options.agent?.includes('*')) {
     targetAgents = validAgents as AgentType[];
-    p.log.info(`Installing to all ${targetAgents.length} agents`);
+    p.log.info(`Installing to all ${targetAgents.length} AI assistants`);
   } else if (options.agent && options.agent.length > 0) {
     const invalidAgents = options.agent.filter((a) => !validAgents.includes(a));
     if (invalidAgents.length > 0) {
@@ -213,15 +213,15 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
     }
     targetAgents = options.agent as AgentType[];
   } else {
-    spinner.start('Loading agents...');
+    spinner.start('Loading AI assistants...');
     const installedAgents = await detectInstalledAgents();
     const totalAgents = Object.keys(agents).length;
-    spinner.stop(`${totalAgents} agents`);
+    spinner.stop(`${totalAgents} AI assistants`);
 
     if (installedAgents.length === 0) {
       if (options.yes) {
         targetAgents = universalAgents;
-        p.log.info('Installing to universal agents');
+        p.log.info('Installing to universal AI assistants');
       } else {
         const otherAgents = getNonUniversalAgents();
 
@@ -232,7 +232,7 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
         }));
 
         const selected = await searchMultiselect({
-          message: 'Which agents do you want to install to?',
+          message: 'Which AI assistants do you want to install to?',
           items: otherChoices,
           initialSelected: [],
           lockedSection: {
@@ -269,7 +269,7 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
       }));
 
       const selected = await searchMultiselect({
-        message: 'Which agents do you want to install to?',
+        message: 'Which AI assistants do you want to install to?',
         items: otherChoices,
         initialSelected: installedAgents.filter((a) => !universalAgents.includes(a)),
         lockedSection: {
