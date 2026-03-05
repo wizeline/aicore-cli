@@ -178,8 +178,8 @@ describe('installer symlink regression', () => {
       expect(result.symlinkFailed).toBeUndefined();
 
       // For a project-level universal agent, canonical and agent dir are the same
-      // (.agents/skills), so no symlink should be created
-      const installedPath = join(projectDir, '.agents/skills', skillName);
+      // (.agents/), so no symlink should be created
+      const installedPath = join(projectDir, '.agents/', skillName);
       const stats = await lstat(installedPath);
       expect(stats.isDirectory()).toBe(true);
       expect(stats.isSymbolicLink()).toBe(false);

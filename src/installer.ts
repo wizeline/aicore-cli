@@ -66,9 +66,9 @@ function isPathSafe(basePath: string, targetPath: string): boolean {
   return normalizedTarget.startsWith(normalizedBase + sep) || normalizedTarget === normalizedBase;
 }
 
-export function getCanonicalSkillsDir(global: boolean, cwd?: string): string {
+export function getCanonicalSkillsDir(global: boolean, cwd?: string, subdir?: string): string {
   const baseDir = global ? homedir() : cwd || process.cwd();
-  return join(baseDir, AGENTS_DIR, SKILLS_SUBDIR);
+  return join(baseDir, AGENTS_DIR, subdir ?? SKILLS_SUBDIR);
 }
 
 /**
@@ -86,17 +86,46 @@ export function adaptSubdir(dir: string): string {
 }
 
 /**
+ * Adapts a directory path to use an explicit subdir name.
+ * Replaces the trailing 'skills' path component with the given subdir.
+ * Used by aicore mode to install agents/skills into the correct canonical dirs.
+ */
+function adaptSubdirExplicit(dir: string, subdir: string): string {
+  if (subdir === 'skills') return dir;
+  return dir.replace(/(\/|\\|^)skills$/, `$1${subdir}`);
+}
+
+/**
  * Gets the base directory for an agent's skills, respecting universal agents.
  * Universal agents always use the canonical directory, which prevents
  * redundant symlinks and double-listing of skills.
+ *
+ * @param subdir - Optional explicit subdirectory override (e.g. 'agents' or 'skills').
+ *                 Defaults to SKILLS_SUBDIR from the environment.
  */
-export function getAgentBaseDir(agentType: AgentType, global: boolean, cwd?: string): string {
+export function getAgentBaseDir(
+  agentType: AgentType,
+  global: boolean,
+  cwd?: string,
+  subdir?: string
+): string {
   if (isUniversalAgent(agentType)) {
-    return getCanonicalSkillsDir(global, cwd);
+    return getCanonicalSkillsDir(global, cwd, subdir);
   }
 
   const agent = agents[agentType];
   const baseDir = global ? homedir() : cwd || process.cwd();
+
+  if (subdir !== undefined) {
+    // Explicit subdir override (used by aicore mode)
+    if (global) {
+      if (agent.globalSkillsDir === undefined) {
+        return join(baseDir, adaptSubdirExplicit(agent.skillsDir, subdir));
+      }
+      return adaptSubdirExplicit(agent.globalSkillsDir, subdir);
+    }
+    return join(baseDir, adaptSubdirExplicit(agent.skillsDir, subdir));
+  }
 
   if (global) {
     if (agent.globalSkillsDir === undefined) {
@@ -232,7 +261,7 @@ async function createSymlink(target: string, linkPath: string): Promise<boolean>
 export async function installSkillForAgent(
   skill: Skill,
   agentType: AgentType,
-  options: { global?: boolean; cwd?: string; mode?: InstallMode } = {}
+  options: { global?: boolean; cwd?: string; mode?: InstallMode; subdir?: string } = {}
 ): Promise<InstallResult> {
   const agent = agents[agentType];
   const isGlobal = options.global ?? false;
@@ -252,12 +281,12 @@ export async function installSkillForAgent(
   const rawSkillName = skill.name || basename(skill.path);
   const skillName = sanitizeName(rawSkillName);
 
-  // Canonical location: .agents/skills/<skill-name>
-  const canonicalBase = getCanonicalSkillsDir(isGlobal, cwd);
+  // Canonical location: .agents/<subdir>/<skill-name>
+  const canonicalBase = getCanonicalSkillsDir(isGlobal, cwd, options.subdir);
   const canonicalDir = join(canonicalBase, skillName);
 
   // Agent-specific location (for symlink)
-  const agentBase = getAgentBaseDir(agentType, isGlobal, cwd);
+  const agentBase = getAgentBaseDir(agentType, isGlobal, cwd, options.subdir);
   const agentDir = join(agentBase, skillName);
 
   const installMode = options.mode ?? 'symlink';

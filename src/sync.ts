@@ -236,7 +236,7 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
           items: otherChoices,
           initialSelected: [],
           lockedSection: {
-            title: 'Universal (.agents/skills)',
+            title: 'Universal (.agents/)',
             items: universalAgents.map((a) => ({
               value: a,
               label: agents[a].displayName,
@@ -273,7 +273,7 @@ export async function runSync(args: string[], options: SyncOptions = {}): Promis
         items: otherChoices,
         initialSelected: installedAgents.filter((a) => !universalAgents.includes(a)),
         lockedSection: {
-          title: 'Universal (.agents/skills)',
+          title: 'Universal (.agents/)',
           items: universalAgents.map((a) => ({
             value: a,
             label: agents[a].displayName,

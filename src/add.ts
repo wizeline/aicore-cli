@@ -369,7 +369,7 @@ async function selectAgentsInteractive(options: {
 
   // Universal agents shown as locked section
   const universalSection = {
-    title: `Universal (${UNIVERSAL_SKILLS_DIR})`,
+    title: `Universal (${process.env.IS_AICORE_CLI ? '.agents/' : UNIVERSAL_SKILLS_DIR})`,
     items: universalAgents.map((a) => ({
       value: a,
       label: agents[a].displayName,
@@ -377,10 +377,12 @@ async function selectAgentsInteractive(options: {
   };
 
   // Other agents are selectable with their skillsDir as hint
+  const formatHint = (dir: string) =>
+    process.env.IS_AICORE_CLI ? dir.replace(/\/skills$/, '/') : dir;
   const otherChoices = otherAgents.map((a) => ({
     value: a,
     label: agents[a].displayName,
-    hint: options.global ? agents[a].globalSkillsDir! : agents[a].skillsDir,
+    hint: formatHint(options.global ? agents[a].globalSkillsDir! : agents[a].skillsDir),
   }));
 
   // Get last selected agents (filter to only non-universal ones for initial selection)
@@ -1661,6 +1663,374 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       options.skill = options.skill || [];
       if (!options.skill.includes(parsed.skillFilter)) {
         options.skill.push(parsed.skillFilter);
+      }
+    }
+
+    // Aicore mode: detect aicore structure (agents/ + skills/ subdirs) and install both.
+    // When the source has an agents/ subfolder and/or a skills/ subfolder, we install
+    // agents (to .agents/agents/) and skills (to .agents/skills/) in a single pass.
+    if (process.env.IS_AICORE_CLI === '1') {
+      const baseDir = parsed.subpath ? join(skillsDir, parsed.subpath) : skillsDir;
+      const aiAgentsSubDir = join(baseDir, 'agents');
+      const aiSkillsSubDir = join(baseDir, 'skills');
+
+      if (existsSync(aiAgentsSubDir) || existsSync(aiSkillsSubDir)) {
+        spinner.start('Discovering aicore contents...');
+
+        const agentFiles = existsSync(aiAgentsSubDir)
+          ? await discoverAgentFiles(aiAgentsSubDir)
+          : [];
+        const discoveredSkills: Skill[] = existsSync(aiSkillsSubDir)
+          ? await discoverSkills(aiSkillsSubDir, undefined, {
+              includeInternal: !!(options.skill && options.skill.length > 0),
+              fullDepth: options.fullDepth,
+            })
+          : [];
+
+        spinner.stop(
+          `Found ${pc.green(agentFiles.length)} agent(s), ${pc.green(discoveredSkills.length)} skill(s)`
+        );
+
+        if (agentFiles.length === 0 && discoveredSkills.length === 0) {
+          p.outro(pc.red('No agents or skills found in this aicore package.'));
+          await cleanup(tempDir);
+          process.exit(1);
+        }
+
+        if (options.list) {
+          if (agentFiles.length > 0) {
+            console.log();
+            p.log.step(pc.bold('Agents'));
+            for (const af of agentFiles) {
+              p.log.message(`  ${pc.cyan(af.name)}`);
+              if (af.description) p.log.message(`    ${pc.dim(af.description)}`);
+            }
+          }
+          if (discoveredSkills.length > 0) {
+            console.log();
+            p.log.step(pc.bold('Skills'));
+            for (const s of discoveredSkills) {
+              p.log.message(`  ${pc.cyan(getSkillDisplayName(s))}`);
+              if (s.description) p.log.message(`    ${pc.dim(s.description)}`);
+            }
+          }
+          console.log();
+          p.outro('Run without --list to install');
+          await cleanup(tempDir);
+          process.exit(0);
+        }
+
+        // Convert agent files to Skill objects (path points to the .md file itself)
+        const allAgentSkills: Skill[] = agentFiles.map((af) => ({
+          name: af.name,
+          description: af.description,
+          path: af.filePath,
+          rawContent: '',
+        }));
+
+        // Interactive selection for agents — mirrors the skill selection logic below
+        let selectedAgentSkills: Skill[] = allAgentSkills;
+        if (options.skill?.includes('*')) {
+          // keep all
+        } else if (options.skill && options.skill.length > 0) {
+          selectedAgentSkills = filterSkills(allAgentSkills, options.skill);
+        } else if (!options.yes && allAgentSkills.length > 1) {
+          const agentChoices = allAgentSkills.map((a) => ({
+            value: a,
+            label: a.name,
+            hint: a.description
+              ? a.description.length > 60
+                ? a.description.slice(0, 57) + '...'
+                : a.description
+              : basename(a.path),
+          }));
+          const selectedAgents = await multiselect({
+            message: 'Select agents to install',
+            options: agentChoices,
+            required: false,
+          });
+          if (p.isCancel(selectedAgents)) {
+            p.cancel('Installation cancelled');
+            await cleanup(tempDir);
+            process.exit(0);
+          }
+          selectedAgentSkills =
+            (selectedAgents as Skill[]).length > 0 ? (selectedAgents as Skill[]) : [];
+        }
+
+        // Optionally filter skills by --skill flag
+        let selectedSkills: Skill[] = discoveredSkills;
+        if (options.skill?.includes('*')) {
+          // keep all
+        } else if (options.skill && options.skill.length > 0) {
+          selectedSkills = filterSkills(discoveredSkills, options.skill);
+        } else if (!options.yes && discoveredSkills.length > 1) {
+          const skillChoices = discoveredSkills.map((s) => ({
+            value: s,
+            label: getSkillDisplayName(s),
+            hint: s.description
+              ? s.description.length > 60
+                ? s.description.slice(0, 57) + '...'
+                : s.description
+              : basename(s.path),
+          }));
+          const selected = await multiselect({
+            message: 'Select skills to install',
+            options: skillChoices,
+            required: false,
+          });
+          if (p.isCancel(selected)) {
+            p.cancel('Installation cancelled');
+            await cleanup(tempDir);
+            process.exit(0);
+          }
+          selectedSkills = (selected as Skill[]).length > 0 ? (selected as Skill[]) : [];
+        }
+
+        // Determine target AI assistants
+        let aiCoreTargetAgents: AgentType[];
+        const validAgentKeys = Object.keys(agents) as AgentType[];
+
+        if (options.agent?.includes('*')) {
+          aiCoreTargetAgents = validAgentKeys;
+          p.log.info(`Installing to all ${aiCoreTargetAgents.length} AI assistants`);
+        } else if (options.agent && options.agent.length > 0) {
+          const invalidAgents = options.agent.filter(
+            (a) => !validAgentKeys.includes(a as AgentType)
+          );
+          if (invalidAgents.length > 0) {
+            p.log.error(`Invalid agents: ${invalidAgents.join(', ')}`);
+            await cleanup(tempDir);
+            process.exit(1);
+          }
+          aiCoreTargetAgents = options.agent as AgentType[];
+        } else {
+          spinner.start('Loading AI assistants...');
+          const installedAgents = await detectInstalledAgents();
+          spinner.stop(`${validAgentKeys.length} AI assistants`);
+
+          if (installedAgents.length === 0) {
+            if (options.yes) {
+              aiCoreTargetAgents = validAgentKeys;
+              p.log.info('Installing to all AI assistants');
+            } else {
+              const selected = await selectAgentsInteractive({ global: options.global });
+              if (p.isCancel(selected)) {
+                p.cancel('Installation cancelled');
+                await cleanup(tempDir);
+                process.exit(0);
+              }
+              aiCoreTargetAgents = selected as AgentType[];
+            }
+          } else if (installedAgents.length === 1 || options.yes) {
+            aiCoreTargetAgents = ensureUniversalAgents(installedAgents);
+            p.log.info(
+              `Installing to: ${aiCoreTargetAgents.map((a) => pc.cyan(agents[a].displayName)).join(', ')}`
+            );
+          } else {
+            const selected = await selectAgentsInteractive({ global: options.global });
+            if (p.isCancel(selected)) {
+              p.cancel('Installation cancelled');
+              await cleanup(tempDir);
+              process.exit(0);
+            }
+            aiCoreTargetAgents = selected as AgentType[];
+          }
+        }
+
+        // Scope selection
+        let aiCoreInstallGlobally = options.global ?? false;
+        const aiCoreSupportsGlobal = aiCoreTargetAgents.some(
+          (a) => agents[a].globalSkillsDir !== undefined
+        );
+        if (options.global === undefined && !options.yes && aiCoreSupportsGlobal) {
+          const scope = await p.select({
+            message: 'Installation scope',
+            options: [
+              {
+                value: false,
+                label: 'Project',
+                hint: 'Install in current directory (committed with your project)',
+              },
+              {
+                value: true,
+                label: 'Global',
+                hint: 'Install in home directory (available across all projects)',
+              },
+            ],
+          });
+          if (p.isCancel(scope)) {
+            p.cancel('Installation cancelled');
+            await cleanup(tempDir);
+            process.exit(0);
+          }
+          aiCoreInstallGlobally = scope as boolean;
+        }
+
+        // Install mode selection
+        let aiCoreInstallMode: InstallMode = options.copy ? 'copy' : 'symlink';
+        if (!options.copy && !options.yes) {
+          const modeChoice = await p.select({
+            message: 'Installation method',
+            options: [
+              {
+                value: 'symlink',
+                label: 'Symlink (Recommended)',
+                hint: 'Single source of truth, easy updates',
+              },
+              {
+                value: 'copy',
+                label: 'Copy to all AI assistants',
+                hint: 'Independent copies for each assistant',
+              },
+            ],
+          });
+          if (p.isCancel(modeChoice)) {
+            p.cancel('Installation cancelled');
+            await cleanup(tempDir);
+            process.exit(0);
+          }
+          aiCoreInstallMode = modeChoice as InstallMode;
+        }
+
+        // Show summary and confirm
+        if (!options.yes) {
+          const summaryLines: string[] = [];
+          if (selectedAgentSkills.length > 0) {
+            summaryLines.push(pc.bold('Agents'));
+            for (const a of selectedAgentSkills) summaryLines.push(`  ${pc.cyan(a.name)}`);
+          }
+          if (selectedSkills.length > 0) {
+            if (summaryLines.length > 0) summaryLines.push('');
+            summaryLines.push(pc.bold('Skills'));
+            for (const s of selectedSkills)
+              summaryLines.push(`  ${pc.cyan(getSkillDisplayName(s))}`);
+          }
+          summaryLines.push('');
+          summaryLines.push(...buildAgentSummaryLines(aiCoreTargetAgents, aiCoreInstallMode));
+          p.note(summaryLines.join('\n'), 'Installation Summary');
+
+          const confirmed = await p.confirm({ message: 'Proceed with installation?' });
+          if (p.isCancel(confirmed) || !confirmed) {
+            p.cancel('Installation cancelled');
+            await cleanup(tempDir);
+            process.exit(0);
+          }
+        }
+
+        spinner.start('Installing aicore...');
+
+        type AicoreResult = {
+          kind: 'agent' | 'skill';
+          name: string;
+          agent: string;
+          success: boolean;
+          path: string;
+          canonicalPath?: string;
+          mode: InstallMode;
+          symlinkFailed?: boolean;
+          error?: string;
+        };
+        const allResults: AicoreResult[] = [];
+        const aiCoreCwd = process.cwd();
+
+        // Install agent .md files → .agents/agents/
+        for (const agentSkill of selectedAgentSkills) {
+          for (const agentType of aiCoreTargetAgents) {
+            const result = await installSkillForAgent(agentSkill, agentType, {
+              global: aiCoreInstallGlobally,
+              mode: aiCoreInstallMode,
+              subdir: 'agents',
+            });
+            allResults.push({
+              kind: 'agent',
+              name: agentSkill.name,
+              agent: agents[agentType].displayName,
+              ...result,
+            });
+          }
+        }
+
+        // Install skill directories → .agents/skills/
+        for (const skill of selectedSkills) {
+          for (const agentType of aiCoreTargetAgents) {
+            const result = await installSkillForAgent(skill, agentType, {
+              global: aiCoreInstallGlobally,
+              mode: aiCoreInstallMode,
+              subdir: 'skills',
+            });
+            allResults.push({
+              kind: 'skill',
+              name: getSkillDisplayName(skill),
+              agent: agents[agentType].displayName,
+              ...result,
+            });
+          }
+        }
+
+        spinner.stop('Installation complete');
+
+        const successfulAll = allResults.filter((r) => r.success);
+        const failedAll = allResults.filter((r) => !r.success);
+
+        if (successfulAll.length > 0) {
+          const resultLines: string[] = [];
+
+          const printGroup = (label: string, entries: AicoreResult[]) => {
+            const byName = new Map<string, AicoreResult[]>();
+            for (const r of entries) {
+              const list = byName.get(r.name) || [];
+              list.push(r);
+              byName.set(r.name, list);
+            }
+            resultLines.push(pc.bold(label));
+            for (const [, nameEntries] of byName) {
+              const first = nameEntries[0]!;
+              if (first.canonicalPath) {
+                resultLines.push(`${pc.green('✓')} ${shortenPath(first.canonicalPath, aiCoreCwd)}`);
+              } else {
+                resultLines.push(`${pc.green('✓')} ${first.name}`);
+              }
+              resultLines.push(...buildResultLines(nameEntries, aiCoreTargetAgents));
+            }
+          };
+
+          const successfulAgents = successfulAll.filter((r) => r.kind === 'agent');
+          const successfulSkillsR = successfulAll.filter((r) => r.kind === 'skill');
+
+          if (successfulAgents.length > 0) printGroup('Agents', successfulAgents);
+          if (successfulSkillsR.length > 0) {
+            if (resultLines.length > 0) resultLines.push('');
+            printGroup('Skills', successfulSkillsR);
+          }
+
+          const totalInstalled = new Set(successfulAll.map((r) => r.name)).size;
+          p.note(resultLines.join('\n'), pc.green(`Installed ${totalInstalled} item(s)`));
+        }
+
+        if (failedAll.length > 0) {
+          console.log();
+          p.log.error(pc.red(`Failed to install ${failedAll.length}`));
+          for (const r of failedAll) {
+            p.log.message(`  ${pc.red('✗')} ${r.name} → ${r.agent}: ${pc.dim(r.error)}`);
+          }
+        }
+
+        console.log();
+        p.outro(
+          pc.green('Done!') +
+            pc.dim('  Review agents and skills before use; they run with full agent permissions.')
+        );
+
+        track({
+          event: 'install',
+          source: getOwnerRepo(parsed) || parsed.url,
+          skills: [...selectedAgentSkills, ...selectedSkills].map((s) => s.name).join(','),
+          agents: aiCoreTargetAgents.join(','),
+          ...(aiCoreInstallGlobally && { global: '1' }),
+        });
+
+        return;
       }
     }
 

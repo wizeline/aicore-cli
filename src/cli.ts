@@ -61,6 +61,15 @@ const LOGO_LINES_AGENTS = [
   '╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝',
 ];
 
+const LOGO_LINES_AICORE = [
+  ' █████╗ ██╗ ██████╗ ██████╗ ██████╗ ███████╗███████╗',
+  '██╔══██╗██║██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔════╝',
+  '███████║██║██║     ██║   ██║██████╔╝█████╗  ███████╗',
+  '██╔══██║██║██║     ██║   ██║██╔══██╗██╔══╝  ╚════██║',
+  '██║  ██║██║╚██████╗╚██████╔╝██║  ██║███████╗███████║',
+  '╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝',
+];
+
 // 256-color middle grays - visible on both light and dark backgrounds
 const GRAYS = [
   '\x1b[38;5;250m', // lighter gray
@@ -72,7 +81,11 @@ const GRAYS = [
 ];
 
 function showLogo(): void {
-  const logo = process.env.IS_AGENTS_CLI ? LOGO_LINES_AGENTS : LOGO_LINES_SKILLS;
+  const logo = process.env.IS_AICORE_CLI
+    ? LOGO_LINES_AICORE
+    : process.env.IS_AGENTS_CLI
+      ? LOGO_LINES_AGENTS
+      : LOGO_LINES_SKILLS;
   console.log();
   logo.forEach((line, i) => {
     console.log(`${GRAYS[i]}${line}${RESET}`);
@@ -84,9 +97,18 @@ function showBanner(): void {
   console.log();
   console.log(`${DIM}The open agent skills & subagents ecosystem${RESET}`);
   console.log();
-  console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} add ${DIM}<package>${RESET}        ${DIM}Add a new ${SKILL}${RESET}`
-  );
+  if (process.env.IS_AICORE_CLI) {
+    console.log(
+      `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} ${DIM}<package>${RESET}            ${DIM}Install an aicore (agents + skills)${RESET}`
+    );
+    console.log(
+      `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} add ${DIM}<package>${RESET}        ${DIM}Add a new ${SKILL}${RESET}`
+    );
+  } else {
+    console.log(
+      `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} add ${DIM}<package>${RESET}        ${DIM}Add a new ${SKILL}${RESET}`
+    );
+  }
   console.log(
     `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} remove${RESET}               ${DIM}Remove installed ${SKILLS}${RESET}`
   );
@@ -114,7 +136,11 @@ function showBanner(): void {
     `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} experimental_sync${RESET}    ${DIM}Sync ${SKILLS} from node_modules${RESET}`
   );
   console.log();
-  console.log(`${DIM}try:${RESET} npx ${binaryName} add wizeline/agent-skills`);
+  if (process.env.IS_AICORE_CLI) {
+    console.log(`${DIM}try:${RESET} npx ${binaryName} wizeline/agent-skills`);
+  } else {
+    console.log(`${DIM}try:${RESET} npx ${binaryName} add wizeline/agent-skills`);
+  }
   console.log();
   console.log(`Discover more ${SKILLS} at ${TEXT}https://skills.sh/${RESET}`);
   console.log(
@@ -124,14 +150,21 @@ function showBanner(): void {
 }
 
 function showHelp(): void {
+  const aicoreUsageLine = process.env.IS_AICORE_CLI
+    ? `  <package>            Install an aicore package (agents + skills)
+                       e.g. wizeline/my-aicore
+                            https://github.com/owner/my-aicore
+  add <package>        Add agents or skills from a package (alias: a)
+`
+    : `  add <package>        Add a ${SKILL} package (alias: a)
+                       e.g. wizeline/agent-skills
+                            https://github.com/wizeline/agent-skills
+`;
   console.log(`
 ${BOLD}Usage:${RESET} ${binaryName} <command> [options]
 
 ${BOLD}Manage ${SkillsCap}:${RESET}
-  add <package>        Add a ${SKILL} package (alias: a)
-                       e.g. wizeline/agent-skills
-                            https://github.com/wizeline/agent-skills
-  remove [${SKILLS}]      Remove installed ${SKILLS}
+${aicoreUsageLine}  remove [${SKILLS}]      Remove installed ${SKILLS}
   list, ls             List installed ${SKILLS}
   find [query]         Search for ${SKILLS} interactively
 
@@ -230,9 +263,102 @@ Discover more ${SKILLS} at ${TEXT}https://skills.sh/${RESET}
 
 function runInit(args: string[]): void {
   const cwd = process.cwd();
-  const skillName = args[0] || basename(cwd);
+  const name = args[0] || basename(cwd);
   const hasName = args[0] !== undefined;
 
+  // Aicore init: scaffold the full aicore directory structure
+  if (process.env.IS_AICORE_CLI) {
+    const aicoreDir = hasName ? join(cwd, name) : cwd;
+    const agentsDir = join(aicoreDir, 'agents');
+    const skillsDir = join(aicoreDir, 'skills');
+    const sampleSkillDir = join(skillsDir, 'my-skill');
+    const agentFile = join(agentsDir, 'my-agent.md');
+    const skillFile = join(sampleSkillDir, 'SKILL.md');
+    const displayBase = hasName ? `${name}/` : '';
+
+    if (existsSync(aicoreDir) && (existsSync(agentsDir) || existsSync(skillsDir))) {
+      console.log(`${TEXT}AICore already initialized at ${DIM}${hasName ? name : '.'}${RESET}`);
+      return;
+    }
+
+    mkdirSync(agentsDir, { recursive: true });
+    mkdirSync(sampleSkillDir, { recursive: true });
+
+    writeFileSync(
+      agentFile,
+      `---
+name: my-agent
+description: A brief description of what this agent does
+---
+
+# My Agent
+
+Instructions for the AI agent. Define the persona, goals, and behavior here.
+
+## Role
+
+Describe the role and responsibilities of this agent.
+
+## Instructions
+
+1. First behavior rule
+2. Second behavior rule
+3. Additional rules as needed
+`
+    );
+
+    writeFileSync(
+      skillFile,
+      `---
+name: my-skill
+description: A brief description of what this skill does
+---
+
+# My Skill
+
+Instructions for the agent to follow when this skill is activated.
+
+## When to use
+
+Describe when this skill should be used.
+
+## Instructions
+
+1. First step
+2. Second step
+3. Additional steps as needed
+`
+    );
+
+    console.log(`${TEXT}Initialized AICore: ${DIM}${name}${RESET}`);
+    console.log();
+    console.log(`${DIM}Created:${RESET}`);
+    console.log(`  ${displayBase}agents/my-agent.md`);
+    console.log(`  ${displayBase}skills/my-skill/SKILL.md`);
+    console.log();
+    console.log(`${DIM}Structure:${RESET}`);
+    console.log(`  ${name}/`);
+    console.log(`  ├── agents/          ${DIM}← AI assistant instructions (.md files)${RESET}`);
+    console.log(`  └── skills/          ${DIM}← Reusable skills (folders with SKILL.md)${RESET}`);
+    console.log(`      └── my-skill/`);
+    console.log(`          └── SKILL.md`);
+    console.log();
+    console.log(`${DIM}Next steps:${RESET}`);
+    console.log(`  1. Edit ${TEXT}${displayBase}agents/my-agent.md${RESET} to define your agent`);
+    console.log(
+      `  2. Edit ${TEXT}${displayBase}skills/my-skill/SKILL.md${RESET} to define your skill`
+    );
+    console.log();
+    console.log(`${DIM}Publishing:${RESET}`);
+    console.log(
+      `  ${DIM}GitHub:${RESET}  Push to a repo, then ${TEXT}npx ${binaryName} <owner>/<repo>${RESET}`
+    );
+    console.log();
+    return;
+  }
+
+  // Default init: create a single SKILL.md
+  const skillName = name;
   const skillDir = hasName ? join(cwd, skillName) : cwd;
   const skillFile = join(skillDir, 'SKILL.md');
   const displayPath = hasName ? `${skillName}/SKILL.md` : 'SKILL.md';
