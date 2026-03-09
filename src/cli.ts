@@ -30,7 +30,11 @@ function getVersion(): string {
 const VERSION = getVersion();
 initTelemetry(VERSION);
 
-const binaryName = process.env.IS_AGENTS_CLI ? 'agents' : 'skills';
+const binaryName = process.env.IS_AGENTS_CLI
+  ? 'agents'
+  : process.env.IS_AICORE_CLI
+    ? 'aicores'
+    : 'skills';
 const alternativeBinary = process.env.IS_AGENTS_CLI ? 'skills' : 'agents';
 const SKILL = process.env.IS_AGENTS_CLI ? 'agent' : 'skill';
 const SKILLS = process.env.IS_AGENTS_CLI ? 'agents' : 'skills';
