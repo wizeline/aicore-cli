@@ -1,6 +1,6 @@
 {
   "name": "aicores",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "The open agent skills & subagents ecosystem",
   "type": "module",
   "bin": {
