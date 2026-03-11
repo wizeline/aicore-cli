@@ -17,7 +17,7 @@ import type { Skill, AgentType, RemoteSkill } from './types.ts';
 import type { WellKnownSkill } from './providers/wellknown.ts';
 import { agents, detectInstalledAgents, isUniversalAgent } from './agents.ts';
 import { AGENTS_DIR, SKILLS_SUBDIR } from './constants.ts';
-import { parseSkillMd } from './skills.ts';
+import { parseSkillMd, parseAgentMd } from './skills.ts';
 
 export type InstallMode = 'symlink' | 'copy';
 
@@ -90,7 +90,7 @@ export function adaptSubdir(dir: string): string {
  * Replaces the trailing 'skills' path component with the given subdir.
  * Used by aicore mode to install agents/skills into the correct canonical dirs.
  */
-function adaptSubdirExplicit(dir: string, subdir: string): string {
+export function adaptSubdirExplicit(dir: string, subdir: string): string {
   if (subdir === 'skills') return dir;
   return dir.replace(/(\/|\\|^)skills$/, `$1${subdir}`);
 }
@@ -181,10 +181,18 @@ async function resolveParentSymlinks(path: string): Promise<string> {
 }
 
 /**
- * Creates a symlink, handling cross-platform differences
- * Returns true if symlink was created, false if fallback to copy is needed
+ * Creates a symlink, handling cross-platform differences.
+ * @param isFileTarget - true when the target is a file (not a directory).
+ *   On Windows, junctions only work for directories; file symlinks require
+ *   Developer Mode. Passing true causes the junction path to be skipped so
+ *   the call fails gracefully and the caller falls back to a plain copy.
+ * Returns true if symlink was created, false if fallback to copy is needed.
  */
-async function createSymlink(target: string, linkPath: string): Promise<boolean> {
+async function createSymlink(
+  target: string,
+  linkPath: string,
+  isFileTarget = false
+): Promise<boolean> {
   try {
     const resolvedTarget = resolve(target);
     const resolvedLinkPath = resolve(linkPath);
@@ -242,7 +250,13 @@ async function createSymlink(target: string, linkPath: string): Promise<boolean>
     // This ensures the symlink target is correct even when the link's parent dir is a symlink.
     const realLinkDir = await resolveParentSymlinks(linkDir);
     const relativePath = relative(realLinkDir, target);
-    const symlinkType = platform() === 'win32' ? 'junction' : undefined;
+
+    // On Windows, junctions work only for DIRECTORIES and require an absolute target path.
+    // For file targets, junctions are invalid — they either silently create a broken entry
+    // or throw. In that case we skip the junction and let the symlink() call use the
+    // default ('file') type, which requires Developer Mode. Without Developer Mode it
+    // throws, is caught below, and the caller falls back to a plain copy.
+    const symlinkType = platform() === 'win32' && !isFileTarget ? 'junction' : undefined;
 
     // On Windows, junctions require absolute paths. Node.js internally calls
     // path.resolve() on the target using process.cwd() as the base, NOT the
@@ -335,7 +349,11 @@ export async function installSkillForAgent(
       };
     }
 
-    // Symlink mode: copy to canonical location and symlink to agent location
+    // Symlink mode: copy to canonical location, then symlink (dirs) or copy (files) per-agent.
+    // For single .md file agents: always copy to agent-specific dirs.
+    // Windows NTFS junctions only work for directories — junctions to .md files appear
+    // to succeed but are unreadable. File symlinks require Developer Mode. Copying is
+    // reliable cross-platform and the canonical .agents/agents/name.md is the source of truth.
     if (isFile) {
       await mkdir(dirname(finalCanonical), { recursive: true });
       await rm(finalCanonical, { force: true }).catch(() => {});
@@ -357,18 +375,28 @@ export async function installSkillForAgent(
       };
     }
 
+    // For single .md file agents, skip the symlink and copy directly to each agent dir.
+    // Symlinks for files are unreliable on Windows (junction is dir-only; file symlinks
+    // need Developer Mode). The canonical path is already written above.
+    if (isFile) {
+      await mkdir(dirname(finalAgentDir), { recursive: true });
+      await rm(finalAgentDir, { force: true }).catch(() => {});
+      await cp(skill.path, finalAgentDir);
+      return {
+        success: true,
+        path: finalAgentDir,
+        canonicalPath: finalCanonical,
+        mode: 'symlink',
+        symlinkFailed: true, // indicates file was copied rather than symlinked
+      };
+    }
+
     const symlinkCreated = await createSymlink(finalCanonical, finalAgentDir);
 
     if (!symlinkCreated) {
-      // Symlink failed, fall back to copy
-      if (isFile) {
-        await mkdir(dirname(finalAgentDir), { recursive: true });
-        await rm(finalAgentDir, { force: true }).catch(() => {});
-        await cp(skill.path, finalAgentDir);
-      } else {
-        await cleanAndCreateDirectory(finalAgentDir);
-        await copyDirectory(skill.path, finalAgentDir);
-      }
+      // Directory symlink failed, fall back to copy
+      await cleanAndCreateDirectory(finalAgentDir);
+      await copyDirectory(skill.path, finalAgentDir);
 
       return {
         success: true,
@@ -500,6 +528,13 @@ export function getCanonicalPath(
   }
 
   return canonicalPath;
+}
+export interface MintlifySkill {
+  name: string;
+  description: string;
+  content: string;
+  mintlifySite: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -885,6 +920,7 @@ export interface InstalledSkill {
   canonicalPath: string;
   scope: 'project' | 'global';
   agents: AgentType[];
+  isFile?: boolean;
 }
 
 /**
@@ -963,23 +999,30 @@ export async function listInstalledSkills(
       const entries = await readdir(scope.path, { withFileTypes: true });
 
       for (const entry of entries) {
-        if (!entry.isDirectory()) {
-          continue;
-        }
-
         const skillDir = join(scope.path, entry.name);
-        const skillMdPath = join(skillDir, 'SKILL.md');
+        let skillMdPath = join(skillDir, 'SKILL.md');
+        let isFileAgent = false;
 
-        // Check if SKILL.md exists
+        // Check if SKILL.md exists (for directories)
         try {
+          if (!entry.isDirectory()) {
+            throw new Error('Not a directory');
+          }
           await stat(skillMdPath);
         } catch {
-          // SKILL.md doesn't exist, skip this directory
-          continue;
+          // If not a directory with SKILL.md, check if it's an agent .md file
+          if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md') {
+            skillMdPath = skillDir;
+            isFileAgent = true;
+          } else {
+            continue;
+          }
         }
 
-        // Parse the skill
-        const skill = await parseSkillMd(skillMdPath);
+        // Parse the skill or agent
+        const skill = isFileAgent
+          ? await parseAgentMd(skillMdPath)
+          : await parseSkillMd(skillMdPath);
         if (!skill) {
           continue;
         }
@@ -1002,6 +1045,7 @@ export async function listInstalledSkills(
               canonicalPath: skillDir,
               scope: scopeKey,
               agents: [scope.agentType],
+              isFile: isFileAgent,
             });
           }
           continue;
@@ -1023,7 +1067,7 @@ export async function listInstalledSkills(
             : join(cwd, adaptSubdir(agent.skillsDir));
           let found = false;
 
-          // Try exact directory name matches
+          // Try exact directory/file name matches
           const possibleNames = Array.from(
             new Set([
               entry.name,
@@ -1032,6 +1076,10 @@ export async function listInstalledSkills(
                 .toLowerCase()
                 .replace(/\s+/g, '-')
                 .replace(/[\/\\:\0]/g, ''),
+              isFileAgent && !entry.name.endsWith('.md') ? `${entry.name}.md` : entry.name,
+              isFileAgent && !sanitizedSkillName.endsWith('.md')
+                ? `${sanitizedSkillName}.md`
+                : sanitizedSkillName,
             ])
           );
 
@@ -1097,6 +1145,7 @@ export async function listInstalledSkills(
             canonicalPath: skillDir,
             scope: scopeKey,
             agents: installedAgents,
+            isFile: isFileAgent,
           });
         }
       }

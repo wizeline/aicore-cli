@@ -43,6 +43,7 @@ import {
   getInstallPath,
   getCanonicalPath,
   installWellKnownSkillForAgent,
+  installRemoteSkillForAgent,
   type InstallMode,
 } from './installer.ts';
 import {
@@ -60,7 +61,7 @@ import {
   type SkillAuditData,
   type PartnerAudit,
 } from './telemetry.ts';
-import { wellKnownProvider, type WellKnownSkill } from './providers/index.ts';
+import { wellKnownProvider, type WellKnownSkill, findProvider } from './providers/index.ts';
 import {
   addSkillToLock,
   fetchSkillFolderHash,
@@ -1665,10 +1666,14 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
       }
     }
 
-    // Aicore mode: detect aicore structure (agents/ + skills/ subdirs) and install both.
-    // When the source has an agents/ subfolder and/or a skills/ subfolder, we install
-    // agents (to .agents/agents/) and skills (to .agents/skills/) in a single pass.
-    if (process.env.IS_AICORE_CLI === '1') {
+    // Aicore mode: detect aicore structure (agents/ + skills/ subdirs).
+    // npx agents → installs only agent .md files (to .agents/agents/).
+    // npx aicores → installs both agents and skills.
+    // This also fires for npx agents so that aicore-structured repos install correctly.
+    if (process.env.IS_AICORE_CLI === '1' || process.env.IS_AGENTS_CLI === '1') {
+      // npx agents installs only agents; npx aicores installs agents + skills.
+      const shouldInstallSkills = process.env.IS_AICORE_CLI === '1';
+
       const baseDir = parsed.subpath ? join(skillsDir, parsed.subpath) : skillsDir;
       const aiAgentsSubDir = join(baseDir, 'agents');
       const aiSkillsSubDir = join(baseDir, 'skills');
@@ -1681,7 +1686,8 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
           spinner.stop(`Found ${pc.green(aicores.length)} aicore(s)`);
           console.log();
           for (const aicore of aicores) {
-            const totalItems = aicore.agents.length + aicore.skills.length;
+            const totalItems =
+              aicore.agents.length + (shouldInstallSkills ? aicore.skills.length : 0);
             console.log(
               pc.bold(pc.cyan(aicore.name)) +
                 pc.dim(` (${totalItems} item${totalItems !== 1 ? 's' : ''})`)
@@ -1691,7 +1697,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
               items: Array<{ name: string; description: string }>;
             }> = [];
             if (aicore.agents.length > 0) sections.push({ label: 'Agents', items: aicore.agents });
-            if (aicore.skills.length > 0)
+            if (shouldInstallSkills && aicore.skills.length > 0)
               sections.push({
                 label: 'Skills',
                 items: aicore.skills.map((s) => ({
@@ -1724,25 +1730,34 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
         spinner.stop('');
       }
 
-      if (existsSync(aiAgentsSubDir) || existsSync(aiSkillsSubDir)) {
+      // For npx agents: only trigger if an agents/ subdir exists.
+      // For npx aicores: trigger if either agents/ or skills/ exists.
+      const hasAiCoreStructure = shouldInstallSkills
+        ? existsSync(aiAgentsSubDir) || existsSync(aiSkillsSubDir)
+        : existsSync(aiAgentsSubDir);
+
+      if (hasAiCoreStructure) {
         spinner.start('Discovering aicore contents...');
 
         const agentFiles = existsSync(aiAgentsSubDir)
           ? await discoverAgentFiles(aiAgentsSubDir)
           : [];
-        const discoveredSkills: Skill[] = existsSync(aiSkillsSubDir)
-          ? await discoverSkills(aiSkillsSubDir, undefined, {
-              includeInternal: !!(options.skill && options.skill.length > 0),
-              fullDepth: options.fullDepth,
-            })
-          : [];
+        // Only discover skills when using npx aicores, not npx agents
+        const discoveredSkills: Skill[] =
+          shouldInstallSkills && existsSync(aiSkillsSubDir)
+            ? await discoverSkills(aiSkillsSubDir, undefined, {
+                includeInternal: !!(options.skill && options.skill.length > 0),
+                fullDepth: options.fullDepth,
+              })
+            : [];
 
-        spinner.stop(
-          `Found ${pc.green(agentFiles.length)} agent(s), ${pc.green(discoveredSkills.length)} skill(s)`
-        );
+        const spinnerMsg = shouldInstallSkills
+          ? `Found ${pc.green(agentFiles.length)} agent(s), ${pc.green(discoveredSkills.length)} skill(s)`
+          : `Found ${pc.green(agentFiles.length)} agent(s)`;
+        spinner.stop(spinnerMsg);
 
         if (agentFiles.length === 0 && discoveredSkills.length === 0) {
-          p.outro(pc.red('No agents or skills found in this aicore package.'));
+          p.outro(pc.red('No agents found in this package.'));
           await cleanup(tempDir);
           process.exit(1);
         }
@@ -1993,6 +2008,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
           kind: 'agent' | 'skill';
           name: string;
           agent: string;
+          agentType: AgentType;
           success: boolean;
           path: string;
           canonicalPath?: string;
@@ -2015,6 +2031,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
               kind: 'agent',
               name: agentSkill.name,
               agent: agents[agentType].displayName,
+              agentType,
               ...result,
             });
           }
@@ -2032,6 +2049,7 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
               kind: 'skill',
               name: getSkillDisplayName(skill),
               agent: agents[agentType].displayName,
+              agentType,
               ...result,
             });
           }
@@ -2053,14 +2071,48 @@ export async function runAdd(args: string[], options: AddOptions = {}): Promise<
               byName.set(r.name, list);
             }
             resultLines.push(pc.bold(label));
+            const buildAicoreResultLines = (
+              nameEntries: AicoreResult[],
+              targetAgents: AgentType[]
+            ): string[] => {
+              const lines: string[] = [];
+              const cwd = process.cwd();
+
+              // Sort entries to show universal first
+              const sorted = [...nameEntries].sort((a, b) => {
+                if (isUniversalAgent(a.agentType) && !isUniversalAgent(b.agentType)) return -1;
+                if (!isUniversalAgent(a.agentType) && isUniversalAgent(b.agentType)) return 1;
+                return 0;
+              });
+
+              for (const res of sorted) {
+                const mode =
+                  res.mode === 'symlink' ? (res.symlinkFailed ? 'copied' : 'symlinked') : 'copied';
+                const agentName = agents[res.agentType].displayName;
+                const path = shortenPath(res.path, cwd);
+
+                if (isUniversalAgent(res.agentType)) {
+                  lines.push(`    ${pc.dim(res.agentType)}: ${pc.dim('Universal')}`);
+                  lines.push(`    ${pc.dim(mode)}: ${pc.dim('Universal')}`);
+                } else {
+                  // For non-universal agents, show their specific path if it differs from the header
+                  lines.push(`    ${pc.dim(mode)}: ${pc.dim(agentName)}`);
+                  // Only show child path if it's different (e.g. not just canonical)
+                  if (res.path !== res.canonicalPath) {
+                    lines.push(`    ${pc.dim('at:')} ${pc.dim(path)}`);
+                  }
+                }
+              }
+
+              return lines;
+            };
+
             for (const [, nameEntries] of byName) {
               const first = nameEntries[0]!;
-              if (first.canonicalPath) {
-                resultLines.push(`${pc.green('✓')} ${shortenPath(first.canonicalPath, aiCoreCwd)}`);
-              } else {
-                resultLines.push(`${pc.green('✓')} ${first.name}`);
-              }
-              resultLines.push(...buildResultLines(nameEntries, aiCoreTargetAgents));
+              const displayPath = first.canonicalPath ? first.canonicalPath : first.path;
+              resultLines.push(`${pc.green('✓')} ${shortenPath(displayPath, aiCoreCwd)}`);
+
+              resultLines.push(...buildAicoreResultLines(nameEntries, aiCoreTargetAgents));
             }
           };
 
