@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents working on the `agents-skills` C
 
 ## Project Overview
 
-`agents-skills` is the CLI for the open agent ecosystem. It provides two identical command-line interfaces: `skills` and `agents`. **These commands are aliases and can be used interchangeably.**
+`agents-skills` is the CLI for the open agent ecosystem. It provides two identical command-line interfaces: `skills` and `subagents`. **These commands are aliases and can be used interchangeably.**
 
 ## Commands
 

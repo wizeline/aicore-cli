@@ -5,7 +5,7 @@
   "type": "module",
   "bin": {
     "skills": "bin/cli.mjs",
-    "agents": "bin/agents.mjs",
+    "subagents": "bin/agents.mjs",
     "aicore": "bin/aicore.mjs",
     "aicores": "bin/aicore.mjs",
     "add-skill": "bin/cli.mjs"

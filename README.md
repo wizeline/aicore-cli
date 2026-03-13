@@ -1,6 +1,6 @@
 # AI Core CLI
 
-The CLI for the open agent ecosystem. Install and manage **agents** and **skills** for your favorite AI tools using `npx aicore`, `npx agents`, or `npx skills`.
+The CLI for the open agent ecosystem. Install and manage **agents** and **skills** for your favorite AI tools using `npx aicores`, `npx subagents`, or `npx skills`.
 
 <!-- agent-list:start -->
 Supports **OpenCode**, **Claude Code**, **Codex**, **Cursor**, and [37 more](#available-agents).
@@ -30,10 +30,10 @@ npx aicores wizeline/my-aicore -a claude-code
 npx aicores wizeline/my-aicore --skill frontend-design
 
 # Install agents separately
-npx aicores agents add wizeline/agent-skills
+npx subagents add wizeline/subagents
 
 # Install skills separately
-npx aicores skills add wizeline/agent-skills
+npx skills add wizeline/skills
 ```
 
 Or install globally to use without `npx`:
@@ -49,23 +49,23 @@ pnpm add -g aicores
 yarn global add aicores
 ```
 
-Once installed globally, use `aicore`, `agents`, or `skills` directly:
+Once installed globally, use `aicore`, `subagents`, or `skills` directly:
 
 ```bash
-aicore wizeline/my-aicore
-agents add wizeline/agent-skills
-skills add wizeline/agent-skills
+aicores wizeline/my-aicore
+subagents add wizeline/agents
+skills add wizeline/skills
 ```
 
 > [!TIP]
-> **Three interchangeable commands**: `aicore`, `agents`, and `skills` all work the same way. Use `npx aicore` to install a bundled package of agents + skills at once, or use `npx agents` / `npx skills` to install them separately.
+> **Three interchangeable commands**: `aicores`, `subagents`, and `skills` all work the same way. Use `npx aicores` to install a bundled package of agents + skills at once, or use `npx subagents` / `npx skills` to install them separately.
 
-## `npx aicore` — Install Agents & Skills Together
+## `npx aicores` — Install Agents & Skills Together
 
-`aicore` is the unified command for installing a package that contains both agents (subagents) and skills in one shot.
+`aicores` is the unified command for installing a package that contains both agents (subagents) and skills in one shot.
 
 ```bash
-npx aicore wizeline/my-aicore
+npx aicores wizeline/my-aicore
 ```
 
 An **aicore package** follows this directory structure:
@@ -85,7 +85,7 @@ my-aicore/
             └── helper.py     ← Optional: helper scripts
 ```
 
-When you run `npx aicore <source>`, the CLI:
+When you run `npx aicores <source>`, the CLI:
 
 1. Clones (or reads) the source
 2. Discovers all agent `.md` files in the `agents/` subfolder → installs them to `.agents/agents/`
@@ -96,16 +96,16 @@ When you run `npx aicore <source>`, the CLI:
 
 ```bash
 # GitHub shorthand (owner/repo)
-npx aicore wizeline/my-aicore
+npx aicores wizeline/my-aicore
 
 # Full GitHub URL
-npx aicore https://github.com/wizeline/my-aicore
+npx aicores https://github.com/wizeline/my-aicore
 
 # Direct path to a specific subfolder
-npx aicore https://github.com/wizeline/my-aicore/tree/main/packages/backend
+npx aicores https://github.com/wizeline/my-aicore/tree/main/packages/backend
 
 # Local path
-npx aicore ./my-local-aicore
+npx aicores ./my-local-aicore
 ```
 
 ### Options
@@ -124,29 +124,29 @@ npx aicore ./my-local-aicore
 
 ```bash
 # List aicores from a folder or URL without installing
-npx aicore wizeline/my-aicore --list
+npx aicores wizeline/my-aicore --list
 
 # Install everything globally and skip all prompts
-npx aicore wizeline/my-aicore -g -y
+npx aicores wizeline/my-aicore -g -y
 
 # Install to specific AI assistants only
-npx aicore wizeline/my-aicore -a claude-code -a opencode
+npx aicores wizeline/my-aicore -a claude-code -a opencode
 
 # Install only specific skills (agents are always fully installed)
-npx aicore wizeline/my-aicore --skill frontend-design
+npx aicores wizeline/my-aicore --skill frontend-design
 
 # Non-interactive CI/CD install
-npx aicore wizeline/my-aicore -g -y --all
+npx aicores wizeline/my-aicore -g -y --all
 ```
 
 ### Scaffold a New AICore Package
 
 ```bash
 # Create an aicore structure in a new subdirectory
-npx aicore init my-aicore
+npx aicores init my-aicore
 
 # Create in the current directory
-npx aicore init
+npx aicores init
 ```
 
 This generates:
@@ -169,35 +169,35 @@ my-aicore/
 
 ---
 
-## `npx agents` / `npx skills` — Install Separately
+## `npx subagents` / `npx skills` — Install Separately
 
 Use these commands to install agents or skills independently from any repository (not required to follow the aicore structure).
 
 ```bash
-npx agents add wizeline/agent-skills
-npx skills add wizeline/agent-skills
+npx subagents add wizeline/agents
+npx skills add wizeline/skills
 ```
 
 ### Supported Source Formats
 
 ```bash
 # GitHub shorthand (owner/repo)
-npx agents add wizeline/agent-skills
+npx subagents add wizeline/agents
 
 # Full GitHub URL
-npx agents add https://github.com/wizeline/agent-skills
+npx subagents add https://github.com/wizeline/agents
 
 # Direct path to a skill or agent in a repo
-npx agents add https://github.com/wizeline/agent-skills/tree/main/skills/web-design-guidelines
+npx subagents add https://github.com/wizeline/agents/tree/main/web-design-guidelines
 
 # GitLab URL
-npx agents add https://gitlab.com/org/repo
+npx subagents add https://gitlab.com/org/agents
 
 # Any git URL
-npx agents add git@github.com:wizeline/agent-skills.git
+npx subagents add git@github.com:wizeline/agents.git
 
 # Local path
-npx agents add ./my-local-skills
+npx subagents add ./my-local-agents
 ```
 
 ### Add Options
@@ -216,28 +216,28 @@ npx agents add ./my-local-skills
 
 ```bash
 # List items in a repository
-npx agents add wizeline/agent-skills --list
+npx subagents add wizeline/agents --list
 
 # Install specific items
-npx agents add wizeline/agent-skills --skill frontend-design --skill skill-creator
+npx subagents add wizeline/agents --skill frontend-design --skill skill-creator
 
 # Install with spaces in the name (must be quoted)
-npx agents add owner/repo --skill "Convex Best Practices"
+npx subagents add owner/repo --skill "Convex Best Practices"
 
 # Install to specific agents
-npx agents add wizeline/agent-skills -a claude-code -a opencode
+npx subagents add wizeline/agents -a claude-code -a opencode
 
 # Non-interactive installation (CI/CD friendly)
-npx agents add wizeline/agent-skills --skill frontend-design -g -a claude-code -y
+npx subagents add wizeline/agents --skill frontend-design -g -a claude-code -y
 
 # Install all items from a repo to all agents
-npx agents add wizeline/agent-skills --all
+npx subagents add wizeline/agents --all
 
 # Install all items to specific agents
-npx agents add wizeline/agent-skills --skill '*' -a claude-code
+npx subagents add wizeline/agents --skill '*' -a claude-code
 
 # Install specific items to all agents
-npx agents add wizeline/agent-skills --agent '*' --skill frontend-design
+npx subagents add wizeline/agents --agent '*' --skill frontend-design
 ```
 
 ### Installation Scope
@@ -260,7 +260,7 @@ When installing interactively, you can choose:
 
 ## Other Commands
 
-These commands work with all three CLIs (`aicore`, `agents`, `skills`):
+These commands work with all three CLIs (`aicores`, `subagents`, `skills`):
 
 | Command                        | Description                                    |
 | ------------------------------ | ---------------------------------------------- |
