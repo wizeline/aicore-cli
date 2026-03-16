@@ -300,7 +300,7 @@ function runInit(args: string[]): void {
   const name = args[0] || basename(cwd);
   const hasName = args[0] !== undefined;
 
-  // Aicore init: scaffold the full aicore directory structure
+  // Aicore init: scaffold the full aicore package directory structure
   if (process.env.IS_AICORE_CLI) {
     const aicoreDir = hasName ? join(cwd, name) : cwd;
     const agentsDir = join(aicoreDir, 'agents');
@@ -371,11 +371,19 @@ Describe when this skill should be used.
     console.log(`  ${displayBase}skills/my-skill/SKILL.md`);
     console.log();
     console.log(`${DIM}Structure:${RESET}`);
-    console.log(`  ${name}/`);
-    console.log(`  ├── agents/          ${DIM}← AI assistant instructions (.md files)${RESET}`);
-    console.log(`  └── skills/          ${DIM}← Reusable skills (folders with SKILL.md)${RESET}`);
+    console.log(`  ${displayBase || name + '/'}`);
+    console.log(`  ├── agents/`);
+    console.log(
+      `  │   └── my-agent.md       ${DIM}← Required: YAML frontmatter + instructions${RESET}`
+    );
+    console.log(`  └── skills/`);
     console.log(`      └── my-skill/`);
-    console.log(`          └── SKILL.md`);
+    console.log(
+      `          ├── SKILL.md       ${DIM}← Required: YAML frontmatter + instructions${RESET}`
+    );
+    console.log(`          ├── references/    ${DIM}← Optional: reference documents${RESET}`);
+    console.log(`          ├── assets/        ${DIM}← Optional: template files${RESET}`);
+    console.log(`          └── scripts/       ${DIM}← Optional: helper scripts${RESET}`);
     console.log();
     console.log(`${DIM}Next steps:${RESET}`);
     console.log(`  1. Edit ${TEXT}${displayBase}agents/my-agent.md${RESET} to define your agent`);
@@ -386,6 +394,58 @@ Describe when this skill should be used.
     console.log(`${DIM}Publishing:${RESET}`);
     console.log(
       `  ${DIM}GitHub:${RESET}  Push to a repo, then ${TEXT}npx ${binaryName} <owner>/<repo>${RESET}`
+    );
+    console.log();
+    return;
+  }
+
+  // Subagent init: create a single standalone .md file
+  if (process.env.IS_AGENTS_CLI) {
+    const agentName = name.endsWith('.md') ? name.slice(0, -3) : name;
+    const agentFile = join(cwd, `${agentName}.md`);
+    const displayPath = `${agentName}.md`;
+
+    if (existsSync(agentFile)) {
+      console.log(`${TEXT}Subagent already exists at ${DIM}${displayPath}${RESET}`);
+      return;
+    }
+
+    const agentContent = `---
+name: ${agentName}
+description: A brief description of what this subagent does
+---
+
+# ${agentName}
+
+Instructions for the AI assistant. Define the persona, goals, and behavior here.
+
+## Role
+
+Describe the role and responsibilities of this subagent.
+
+## Instructions
+
+1. First behavior rule
+2. Second behavior rule
+3. Additional rules as needed
+`;
+
+    writeFileSync(agentFile, agentContent);
+
+    console.log(`${TEXT}Initialized subagent: ${DIM}${agentName}${RESET}`);
+    console.log();
+    console.log(`${DIM}Created:${RESET}`);
+    console.log(`  ${displayPath}`);
+    console.log();
+    console.log(`${DIM}Next steps:${RESET}`);
+    console.log(`  1. Edit ${TEXT}${displayPath}${RESET} to define your subagent instructions`);
+    console.log(
+      `  2. Update the ${TEXT}name${RESET} and ${TEXT}description${RESET} in the frontmatter`
+    );
+    console.log();
+    console.log(`${DIM}Publishing:${RESET}`);
+    console.log(
+      `  ${DIM}GitHub:${RESET}  Push to a repo, then ${TEXT}npx ${binaryName} add <owner>/<repo>${RESET}`
     );
     console.log();
     return;
@@ -446,10 +506,8 @@ Describe when this ${SKILL} should be used.
   console.log(
     `  ${DIM}URL:${RESET}     Host the file, then ${TEXT}npx ${binaryName} add https://example.com/${displayPath}${RESET}`
   );
-  if (!process.env.IS_AGENTS_CLI && !process.env.IS_AICORE_CLI) {
-    console.log();
-    console.log(`Browse existing ${SKILLS} for inspiration at ${TEXT}https://skills.sh/${RESET}`);
-  }
+  console.log();
+  console.log(`Browse existing ${SKILLS} for inspiration at ${TEXT}https://skills.sh/${RESET}`);
   console.log();
 }
 
