@@ -610,10 +610,12 @@ function entryMatchesSourceFilter(
 function printSkippedSkills(skipped: SkippedSkill[]): void {
   if (skipped.length === 0) return;
   console.log();
-  console.log(`${DIM}${skipped.length} skill(s) cannot be checked automatically:${RESET}`);
+  console.log(`${DIM}${skipped.length} ${SKILL}(s) cannot be checked automatically:${RESET}`);
   for (const skill of skipped) {
     console.log(`  ${TEXT}•${RESET} ${skill.name} ${DIM}(${skill.reason})${RESET}`);
-    console.log(`    ${DIM}To update: ${TEXT}npx skills add ${skill.sourceUrl} -g -y${RESET}`);
+    console.log(
+      `    ${DIM}To update: ${TEXT}npx ${binaryName} add ${skill.sourceUrl} -g -y${RESET}`
+    );
   }
 }
 
