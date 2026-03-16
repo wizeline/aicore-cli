@@ -128,7 +128,7 @@ function showBanner(): void {
     `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} check${RESET}                ${DIM}Check for updates${RESET}`
   );
   console.log(
-    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} update${RESET}               ${DIM}Update all ${SKILLS}${RESET}`
+    `  ${DIM}$${RESET} ${TEXT}npx ${binaryName} update ${DIM}[source]${RESET}         ${DIM}Update all ${SKILLS} (or from a specific repo)${RESET}`
   );
   console.log();
   console.log(
@@ -177,7 +177,9 @@ ${aicoreUsageLine}  remove [${SKILLS}]      Remove installed ${SKILLS}
 
 ${BOLD}Updates:${RESET}
   check                Check for available ${SKILL} updates
-  update               Update all ${SKILLS} to latest versions
+  update [source]      Update all ${SKILLS}, or only those from a specific repo
+                       e.g. update wizeline/my-aicore
+                            update https://github.com/owner/repo
 
 ${BOLD}Project:${RESET}
   experimental_install Restore ${SKILLS} from ${SKILLS}-lock.json
@@ -229,6 +231,7 @@ ${BOLD}Examples:${RESET}
   ${DIM}$${RESET} ${binaryName} find typescript               ${DIM}# search by keyword${RESET}
   ${DIM}$${RESET} ${binaryName} check
   ${DIM}$${RESET} ${binaryName} update
+  ${DIM}$${RESET} ${binaryName} update wizeline/my-aicore  ${DIM}# update from a specific repo${RESET}
   ${DIM}$${RESET} ${binaryName} experimental_install            ${DIM}# restore from ${SKILLS}-lock.json${RESET}
   ${DIM}$${RESET} ${binaryName} init my-${SKILL}
   ${DIM}$${RESET} ${binaryName} experimental_sync              ${DIM}# sync from node_modules${RESET}
@@ -443,6 +446,8 @@ interface SkillLockEntry {
   skillFolderHash: string;
   installedAt: string;
   updatedAt: string;
+  /** Name of the plugin/aicore this skill belongs to (if any) */
+  pluginName?: string;
 }
 
 interface SkillLockFile {
@@ -528,6 +533,49 @@ function getSkipReason(entry: SkillLockEntry): string {
     return 'No skill path recorded';
   }
   return 'No version tracking';
+}
+
+/**
+ * Normalize a source argument to owner/repo format.
+ * Handles: "owner/repo", "https://github.com/owner/repo", full URLs with subpaths.
+ * Returns null if the source cannot be parsed into owner/repo.
+ */
+function normalizeSourceToOwnerRepo(source: string): string | null {
+  // Already owner/repo format (single slash, no protocol)
+  if (/^[^/:\s]+\/[^/:\s]+$/.test(source)) {
+    return source;
+  }
+  // Try to parse as URL
+  try {
+    const url = new URL(source);
+    let path = url.pathname.slice(1);
+    // Remove .git suffix
+    path = path.replace(/\.git$/, '');
+    // Remove /tree/... or /blob/... subpath
+    path = path.split('/tree/')[0]!.split('/blob/')[0]!;
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]}/${parts[1]}`;
+    }
+  } catch {
+    // Not a URL
+  }
+  return null;
+}
+
+/**
+ * Check if a lock entry matches a source filter string.
+ * Matches against: normalized owner/repo, pluginName, and sourceUrl.
+ */
+function entryMatchesSourceFilter(
+  entry: SkillLockEntry,
+  normalizedFilter: string | null,
+  rawFilter: string
+): boolean {
+  if (normalizedFilter && entry.source === normalizedFilter) return true;
+  if (entry.pluginName && entry.pluginName === rawFilter) return true;
+  if (normalizedFilter && entry.pluginName === normalizedFilter) return true;
+  return false;
 }
 
 /**
@@ -650,12 +698,37 @@ async function runCheck(args: string[] = []): Promise<void> {
   console.log();
 }
 
-async function runUpdate(): Promise<void> {
-  console.log(`${TEXT}Checking for ${SKILL} updates...${RESET}`);
+async function runUpdate(args: string[] = []): Promise<void> {
+  // Extract optional source filter (first non-flag arg)
+  const sourceArg = args.find((a) => !a.startsWith('-'));
+  const normalizedFilter = sourceArg ? normalizeSourceToOwnerRepo(sourceArg) : null;
+
+  console.log(
+    sourceArg
+      ? `${TEXT}Checking for updates from ${sourceArg}...${RESET}`
+      : `${TEXT}Checking for ${SKILL} updates...${RESET}`
+  );
   console.log();
 
   const lock = readSkillLock();
-  const skillNames = Object.keys(lock.skills);
+  let skillNames = Object.keys(lock.skills);
+
+  // Filter by source/aicore name if provided
+  if (sourceArg) {
+    skillNames = skillNames.filter((name) => {
+      const entry = lock.skills[name];
+      if (!entry) return false;
+      return entryMatchesSourceFilter(entry, normalizedFilter, sourceArg);
+    });
+
+    if (skillNames.length === 0) {
+      console.log(
+        `${DIM}No ${SKILLS} from ${TEXT}${sourceArg}${RESET}${DIM} found in lock file.${RESET}`
+      );
+      console.log(`${DIM}Install with${RESET} ${TEXT}npx ${binaryName} add ${sourceArg}${RESET}`);
+      return;
+    }
+  }
 
   if (skillNames.length === 0) {
     console.log(`${DIM}No ${SKILLS} tracked in lock file.${RESET}`);
@@ -849,7 +922,7 @@ async function main(): Promise<void> {
       break;
     case 'update':
     case 'upgrade':
-      runUpdate();
+      runUpdate(restArgs);
       break;
     case '--help':
     case '-h':
@@ -861,6 +934,23 @@ async function main(): Promise<void> {
       break;
 
     default:
+      if (process.env.IS_AICORE_CLI || process.env.IS_AGENTS_CLI) {
+        // Check if the arg matches an already-installed aicore/subagent source or plugin name
+        const candidateSource = args[0];
+        if (candidateSource && !candidateSource.startsWith('-')) {
+          const lock = readSkillLock();
+          const normalizedCandidate = normalizeSourceToOwnerRepo(candidateSource);
+          const hasInstalled = Object.entries(lock.skills).some(([, entry]) =>
+            entryMatchesSourceFilter(entry, normalizedCandidate, candidateSource)
+          );
+          if (hasInstalled) {
+            showLogo();
+            console.log();
+            await runUpdate(args);
+            return;
+          }
+        }
+      }
       if (process.env.IS_AICORE_CLI) {
         // For the aicore CLI, treat any unknown first arg as a source to install/list from
         showLogo();
