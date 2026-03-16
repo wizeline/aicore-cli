@@ -36,11 +36,31 @@ const binaryName = process.env.IS_AGENTS_CLI
     ? 'aicores'
     : 'skills';
 const alternativeBinary = process.env.IS_AGENTS_CLI ? 'skills' : 'subagents';
-const SKILL = process.env.IS_AGENTS_CLI ? 'subagent' : 'skill';
-const SKILLS = process.env.IS_AGENTS_CLI ? 'subagents' : 'skills';
-const SkillCap = process.env.IS_AGENTS_CLI ? 'Subagent' : 'Skill';
-const SkillsCap = process.env.IS_AGENTS_CLI ? 'Subagents' : 'Skills';
-const DEFAULT_PACKAGE = process.env.IS_AGENTS_CLI ? 'agent' : 'skill';
+const SKILL = process.env.IS_AGENTS_CLI
+  ? 'subagent'
+  : process.env.IS_AICORE_CLI
+    ? 'aicore'
+    : 'skill';
+const SKILLS = process.env.IS_AGENTS_CLI
+  ? 'subagents'
+  : process.env.IS_AICORE_CLI
+    ? 'aicores'
+    : 'skills';
+const SkillCap = process.env.IS_AGENTS_CLI
+  ? 'Subagent'
+  : process.env.IS_AICORE_CLI
+    ? 'Aicore'
+    : 'Skill';
+const SkillsCap = process.env.IS_AGENTS_CLI
+  ? 'Subagents'
+  : process.env.IS_AICORE_CLI
+    ? 'Aicores'
+    : 'Skills';
+const DEFAULT_PACKAGE = process.env.IS_AGENTS_CLI
+  ? 'agent'
+  : process.env.IS_AICORE_CLI
+    ? 'aicore'
+    : 'skill';
 
 const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
@@ -100,7 +120,12 @@ function showLogo(): void {
 function showBanner(): void {
   showLogo();
   console.log();
-  console.log(`${DIM}The open agent skills & subagents ecosystem${RESET}`);
+  const ecosystemTitle = process.env.IS_AICORE_CLI
+    ? 'The open aicores ecosystem'
+    : process.env.IS_AGENTS_CLI
+      ? 'The open subagents ecosystem'
+      : 'The open agent skills & subagents ecosystem';
+  console.log(`${DIM}${ecosystemTitle}${RESET}`);
   console.log();
   if (process.env.IS_AICORE_CLI) {
     console.log(
