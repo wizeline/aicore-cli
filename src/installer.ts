@@ -933,6 +933,8 @@ export async function listInstalledSkills(
     global?: boolean;
     cwd?: string;
     agentFilter?: AgentType[];
+    /** Override the canonical subdir (e.g. 'agents' or 'skills'). When set, agent-specific dirs are skipped. */
+    subdir?: string;
   } = {}
 ): Promise<InstalledSkill[]> {
   const cwd = options.cwd || process.cwd();
@@ -967,7 +969,7 @@ export async function listInstalledSkills(
   //            ├──▶ scan canonical dir ──▶ .agents/skills, ~/.agents/skills
   //            │
   //            ├──▶ scan each installed agent's dir ──▶ .cursor/skills, .claude/skills, ...
-  //            │
+  //            │         (skipped when options.subdir is set)
   //            ▼
   //   deduplicate by skill name
   //
@@ -975,10 +977,12 @@ export async function listInstalledSkills(
   // Skills in agent-specific dirs skip the expensive "check all agents" loop.
   //
   for (const { global: isGlobal } of scopeTypes) {
-    // Add canonical directory
-    scopes.push({ global: isGlobal, path: getCanonicalSkillsDir(isGlobal, cwd) });
+    // Add canonical directory (with optional subdir override)
+    scopes.push({ global: isGlobal, path: getCanonicalSkillsDir(isGlobal, cwd, options.subdir) });
 
-    // Add each installed agent's skills directory
+    // Add each installed agent's skills directory (skipped when a subdir override is set,
+    // since agents/.md files only live in the canonical dir)
+    if (options.subdir) continue;
     for (const agentType of agentsToCheck) {
       const agent = agents[agentType];
       if (isGlobal && agent.globalSkillsDir === undefined) {
