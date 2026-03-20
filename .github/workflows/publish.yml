@@ -106,7 +106,7 @@ jobs:
       - name: Bump version
         if: steps.version.outputs.bump != 'none' && steps.version.outputs.bump != 'skip'
         run: |
-          npm version ${{ steps.version.outputs.bump }} -m "v%s"
+          pnpm version ${{ steps.version.outputs.bump }} -m "v%s"
 
       - name: Push changes
         if: steps.version.outputs.bump != 'none' && steps.version.outputs.bump != 'skip'
@@ -117,7 +117,7 @@ jobs:
       - name: Publish to npm
         id: publish
         if: steps.version.outputs.bump != 'none'
-        run: npm publish --provenance --access public
+        run: pnpm publish --provenance --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
