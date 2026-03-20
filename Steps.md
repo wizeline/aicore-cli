@@ -48,66 +48,66 @@ Mainly used for releasing the project to the public.
 This project doesn't use Yarn for development, but it's mentioned as an option for people who want to *use* the tool.
 - **Global Install**: Users can run `yarn global add aicores` if they prefer Yarn over npm.
 
-## 4. Referencia de Directorios y Funciones
+## 4. Directory and Function Reference
 
-Aquí tienes un desglose de qué hace cada parte del código. No te preocupes por los nombres técnicos, cada uno tiene un propósito claro.
+Here is a breakdown of what each part of the code does. Don't worry about technical names, each has a clear purpose.
 
-### `src/` (El Corazón del Proyecto)
+### `src/` (The Heart of the Project)
 
-Este directorio contiene la lógica principal. Se divide en varios archivos según su función:
+This directory contains the main logic. It is divided into several files according to their function:
 
-#### **Comandos Principales**
-- **`cli.ts`**: Es el punto de entrada. Analiza lo que escribes en la terminal y llama a la función correcta.
+#### **Main Commands**
+- **`cli.ts`**: It is the entry point. It analyzes what you type in the terminal and calls the correct function.
 - **`add.ts`**:
-    - `runAdd()`: La función principal para añadir nuevas "skills" o "subagents".
-    - `parseAddOptions()`: Entiende las opciones que escribes (como `-g` para global).
+    - `runAdd()`: The main function to add new "skills" or "subagents".
+    - `parseAddOptions()`: Understands the options you type (like `-g` for global).
 - **`remove.ts`**:
-    - `removeCommand()`: Se encarga de borrar las skills que ya no quieres.
+    - `removeCommand()`: Handles deleting skills you no longer want.
 - **`list.ts`**:
-    - `runList()`: Muestra en pantalla todo lo que tienes instalado.
+    - `runList()`: Displays everything you have installed on the screen.
 - **`find.ts`**:
-    - `runFind()`: Te permite buscar nuevas skills en internet de forma interactiva.
+    - `runFind()`: Allows you to search for new skills online interactively.
 - **`sync.ts`**:
-    - `runSync()`: Sincroniza tus archivos locales con los que están en la carpeta `node_modules`.
+    - `runSync()`: Synchronizes your local files with those in the `node_modules` folder.
 
-#### **Lógica de Instalación y Archivos**
-- **`installer.ts`**: Es el "constructor".
-    - `installSkillForAgent()`: Copia o enlaza los archivos de una skill a un agente específico.
-    - `getCanonicalPath()`: Calcula la ruta exacta donde debe guardarse cada cosa.
-- **`skill-lock.ts`** y **`local-lock.ts`**:
-    - `readSkillLock()` / `writeSkillLock()`: Leen y guardan el archivo `.skill-lock.json` para no perder la cuenta de lo instalado.
+#### **Installation Logic and Files**
+- **`installer.ts`**: It is the builder.
+    - `installSkillForAgent()`: Copies or links skill files to a specific agent.
+    - `getCanonicalPath()`: Calculates the exact path where everything should be saved.
+- **`skill-lock.ts`** and **`local-lock.ts`**:
+    - `readSkillLock()` / `writeSkillLock()`: Read and save the `.skill-lock.json` file to keep track of what is installed.
 - **`source-parser.ts`**:
-    - `parseSource()`: Analiza si lo que escribiste es una URL de GitHub, una ruta local o un nombre de paquete.
+    - `parseSource()`: Analyzes if what you typed is a GitHub URL, a local path, or a package name.
 - **`git.ts`**:
-    - `cloneRepo()`: Descarga código desde GitHub temporalmente para poder extraer las skills.
+    - `cloneRepo()`: Temporarily downloads code from GitHub to extract skills.
 
-#### **Utilidades y Configuración**
-- **`agents.ts`**: Define qué agentes de IA son compatibles (como Claude Code, Cursor, Windsurf) y dónde guardan sus archivos.
-- **`skills.ts`**: Contiene funciones para leer y entender los archivos `SKILL.md`.
+#### **Utilities and Configuration**
+- **`agents.ts`**: Defines which AI agents are compatible (like Claude Code, Cursor, Windsurf) and where they store their files.
+- **`skills.ts`**: Contains functions to read and understand `SKILL.md` files.
 - **`telemetry.ts`**:
-    - `track()`: Envía datos anónimos sobre el uso para ayudar a mejorar la herramienta (si está activado).
+    - `track()`: Sends anonymous usage data to help improve the tool (if enabled).
 
 ---
 
-### `scripts/` (Herramientas para Desarrolladores)
+### `scripts/` (Developer Tools)
 
-Estos no son para el usuario final, sino para quienes ayudan a construir `aicore-cli`:
+These are not for the end user, but for those who help build `aicore-cli`:
 
-- **`execute-tests.ts`**: Ejecuta todas las pruebas para asegurar que no hay errores.
-- **`sync-agents.ts`**: Mantiene actualizado el archivo `README.md` con la lista de agentes compatibles.
-- **`validate-agents.ts`**: Revisa que la configuración de los agentes sea correcta.
-- **`generate-licenses.ts`**: Crea un archivo con todas las licencias de las librerías que usamos.
-
----
-
-### `bin/` (Los Accesos Directos)
-
-- **`aicore.mjs`**, **`cli.mjs`**, **`agents.mjs`**: Son archivos muy pequeños que solo sirven para arrancar el programa principal que está en `src/`.
+- **`execute-tests.ts`**: Runs all tests to ensure there are no errors.
+- **`sync-agents.ts`**: Keeps the `README.md` file updated with the list of compatible agents.
+- **`validate-agents.ts`**: Checks that the agent configuration is correct.
+- **`generate-licenses.ts`**: Creates a file with all the licenses of the libraries we use.
 
 ---
 
-## 5. Consejos para Novatos
+### `bin/` (Shortcuts)
 
-1.  **Modificar una función**: Si quieres cambiar cómo se instala algo, busca en `src/installer.ts`.
-2.  **Añadir un comando**: Tendrías que crear un archivo en `src/` y registrarlo en `src/cli.ts`.
-3.  **Probar tus cambios**: Usa `pnpm build` y luego ejecuta el comando desde `bin/` para ver si funciona como esperas.
+- **`aicore.mjs`**, **`cli.mjs`**, **`agents.mjs`**: These are very small files that only serve to start the main program located in `src/`.
+
+---
+
+## 5. Tips for Newcomers
+
+1.  **Modify a function**: If you want to change how something is installed, look in `src/installer.ts`.
+2.  **Add a command**: You would need to create a file in `src/` and register it in `src/cli.ts`.
+3.  **Test your changes**: Use `pnpm build` and then run the command from `bin/` to see if it works as you expect.
